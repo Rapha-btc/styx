@@ -14,7 +14,7 @@
 (define-constant ERR-ELEMENT-EXPECTED (err u129))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
-(define-constant OPERATOR_ADDRESS 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
+(define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000) ;; min 10k satoshis 0.0001
 (define-constant FIXED_FEE u2000)
@@ -88,7 +88,7 @@
         (new-available (+ (get available-sbtc current-pool) sbtc-amount))
       )
     ;; Verify caller is the operator
-    (asserts! (is-eq tx-sender OPERATOR_ADDRESS) ERR_FORBIDDEN)
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
     
     ;; Verify parameters
     (asserts! (> sbtc-amount u0) ERR_AMOUNT_NULL)
@@ -130,7 +130,7 @@
         (available-sbtc (get available-sbtc current-pool))
       )
     ;; Verify caller is the operator
-    (asserts! (is-eq tx-sender OPERATOR_ADDRESS) ERR_FORBIDDEN)
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
     
     ;; Verify there is available balance
     (asserts! (> available-sbtc u0) ERR_INSUFFICIENT_POOL_BALANCE)
@@ -140,7 +140,7 @@
     
     ;; Transfer sBTC to operator
     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-            transfer available-sbtc tx-sender OPERATOR_ADDRESS none)))
+            transfer available-sbtc tx-sender OPERATOR_STYX none)))
     
     (print {
       type: "withdraw-from-pool",
@@ -217,7 +217,7 @@
         (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
       )
     
-    (asserts! (> burn-block-height (+ (get last-updated pool) COOLDOWN)) ERR_IN_COOLDOWN)
+    (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN)) ERR_IN_COOLDOWN)
 
     ;; Verify Bitcoin transaction proof
     (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-segwit-tx-mined-compact
