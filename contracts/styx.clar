@@ -1,7 +1,7 @@
 ;; ---- Constants ----
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
-(define-constant ERR_TX_NOT_FOR_RECEIVER (err u106))
+(define-constant ERR_TX_NOT_SENT_TO_POOL (err u106))
 (define-constant ERR_NOT_PROCESSED (err u107))
 (define-constant ERR_BTC_TX_ALREADY_USED (err u109)) 
 (define-constant ERR_IN_COOLDOWN (err u110))
@@ -22,7 +22,7 @@
 ;; ---- Data structures ----
 
 ;; Counter for processed transactions
-(define-data-var processed-tx-count uint u0)
+(define-data-var processed-tx-count uint u1)
 
 ;; Pool structure to track sBTC liquidity (single pool per contract)
 (define-data-var pool 
@@ -171,6 +171,23 @@
   )
 )
 
+(define-read-only (parse-payload-segwit-refund (tx (buff 4096)))
+  (match (get-output-segwit tx u0)
+    result
+    (let
+      (
+        (script (get scriptPubKey result))
+        (script-len (len script))
+        ;; lenght is dynamic one or two bytes!
+        (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
+        (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
+      )
+      (ok (from-consensus-buff? { i: uint } payload))
+    )
+    not-found ERR-ELEMENT-EXPECTED
+  )
+)
+
 ;; Get output from a segwit transaction
 (define-read-only (get-output-segwit (tx (buff 4096)) (index uint))
   (let
@@ -283,12 +300,14 @@
                      btc-amount: btc-amount,
                      sbtc-amount-out: sbtc-amount-out,
                      stx-receiver: stx-receiver,
+                     btc-receiver: btc-receiver,
+                     when: burn-block-height,
                      processor: tx-sender
                    })
                    
                    (ok true))
             ERR_TX_VALUE_TOO_SMALL)
-            ERR_TX_NOT_FOR_RECEIVER))
+            ERR_TX_NOT_SENT_TO_POOL))
       error (err (* error u1000))))
 )
 
@@ -307,3 +326,189 @@
   (match (map-get? processed-btc-txs tx-id)
     tx-info (ok tx-info)
     (err ERR_NOT_PROCESSED)))
+
+;; ---- Edge case functions ----
+
+;; Add a map to track refund requests
+(define-map refund-requests
+  uint  ;; refund-id
+  {
+    btc-tx-id: (buff 128),        ;; Original BTC transaction ID
+    btc-tx-refund-id: (optional (buff 128)),
+    btc-amount: uint,             ;; Original BTC amount
+    btc-receiver: (buff 40),      ;; Where to send the BTC refund
+    stx-receiver: principal,      ;; can only be requested by stx receiver
+    requested-at: uint,           ;; When refund was requested
+    done: bool                    ;; If refund has been processed
+  }
+)
+
+(define-map processed-refunds (buff 128)  uint) ;; BTC transaction ID
+
+;; Counter for refund requests
+(define-data-var next-refund-id uint u1)
+
+;; Request a refund for a BTC transaction
+(define-public (request-refund
+    (btc-refund-receiver (buff 40))
+    (height uint) 
+    (wtx {version: (buff 4),
+      ins: (list 8
+        {outpoint: {hash: (buff 32), index: (buff 4)}, scriptSig: (buff 256), sequence: (buff 4)}),
+      outs: (list 8
+        {value: (buff 8), scriptPubKey: (buff 128)}),
+      locktime: (buff 4)})
+    (witness-data (buff 1650))
+    (header (buff 80)) 
+    (tx-index uint) 
+    (tree-depth uint) 
+    (wproof (list 14 (buff 32))) 
+    (witness-merkle-root (buff 32)) 
+    (witness-reserved-value (buff 32)) 
+    (ctx (buff 1024)) 
+    (cproof (list 14 (buff 32))))
+  (let (
+        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
+        (refund-id (var-get next-refund-id))
+      )
+    
+    ;; Verify Bitcoin transaction included in Block and returns tsxId hash
+    (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-segwit-tx-mined-compact
+                    height 
+                    tx-buff 
+                    header 
+                    tx-index 
+                    tree-depth 
+                    wproof 
+                    witness-merkle-root 
+                    witness-reserved-value 
+                    ctx 
+                    cproof)
+      result
+        (begin
+          ;; Verify transaction is not already processed
+          (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)
+          
+          ;; Extract STX receiver from transaction
+          (match (get out (unwrap! (get-out-value wtx (get btc-receiver (var-get pool))) ERR_NATIVE_FAILURE))
+            out (if (>= (get value out) MIN_SATS) 
+              (let (
+                    (btc-amount (get value out))
+                    (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
+                    (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+                  )
+                  
+                  ;; Verify caller is the STX receiver from transaction
+                  (asserts! (is-eq tx-sender stx-receiver) ERR_INVALID_STX_RECEIVER)
+                  
+                  ;; Mark original transaction as used
+                  (map-set processed-btc-txs result 
+                    {
+                      btc-amount: btc-amount,
+                      sbtc-amount: (- btc-amount FIXED_FEE),
+                      stx-receiver: stx-receiver,
+                      processed-at: burn-block-height,
+                      tx-number: u0
+                    })
+
+                  ;; Create refund request
+                  (map-set refund-requests refund-id
+                    {
+                      btc-tx-id: result,
+                      btc-tx-refund-id: none,
+                      btc-amount: btc-amount,
+                      btc-receiver: btc-refund-receiver,
+                      stx-receiver: stx-receiver,
+                      requested-at: burn-block-height,
+                      done: false
+                    })
+                  
+                  ;; Increment counters
+                  (var-set next-refund-id (+ refund-id u1))
+                  
+                  (print {
+                    type: "request-refund",
+                    refund-id: refund-id,
+                    btc-tx-id: result,
+                    btc-amount: btc-amount,
+                    btc-receiver: btc-refund-receiver,
+                    stx-receiver: stx-receiver,
+                    requested-at: burn-block-height,
+                    done: false
+                  })
+                  
+                  (ok refund-id))
+            ERR_TX_VALUE_TOO_SMALL)
+            ERR_TX_NOT_SENT_TO_POOL))
+      error (err (* error u1000))))
+)
+
+;; Process a refund by providing proof of BTC return transaction
+(define-public (process-refund
+    (refund-id uint)
+    (height uint) 
+    (wtx {version: (buff 4),
+      ins: (list 8
+        {outpoint: {hash: (buff 32), index: (buff 4)}, scriptSig: (buff 256), sequence: (buff 4)}),
+      outs: (list 8
+        {value: (buff 8), scriptPubKey: (buff 128)}),
+      locktime: (buff 4)})
+    (witness-data (buff 1650))
+    (header (buff 80)) 
+    (tx-index uint) 
+    (tree-depth uint) 
+    (wproof (list 14 (buff 32))) 
+    (witness-merkle-root (buff 32)) 
+    (witness-reserved-value (buff 32)) 
+    (ctx (buff 1024)) 
+    (cproof (list 14 (buff 32)))) 
+  (let (
+        (refund (unwrap! (map-get? refund-requests refund-id) ERR_INVALID_ID))
+        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
+        (payload (unwrap! (parse-payload-segwit-refund tx-buff) ERR-ELEMENT-EXPECTED))
+        (refund-id-extracted (unwrap! (get i payload) ERR-ELEMENT-EXPECTED))
+        (btc-amount (get btc-amount refund))
+      )
+
+    ;; Verify refund is not already processed
+    (asserts! (not (get done refund)) ERR_ALREADY_DONE)
+    (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)
+    
+    ;; Verify Bitcoin transaction prrefund anchored
+    (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-segwit-tx-mined-compact
+                    height 
+                    tx-buff 
+                    header 
+                    tx-index 
+                    tree-depth 
+                    wproof 
+                    witness-merkle-root 
+                    witness-reserved-value 
+                    ctx 
+                    cproof)
+      result
+        (begin
+          ;; Verify transaction is not already used
+          (asserts! (is-none (map-get? processed-refunds result)) ERR_BTC_TX_ALREADY_USED)
+            
+          ;; Verify BTC amount sent to btc-receiver
+          (match (get out (unwrap! (get-out-value wtx (get btc-receiver refund)) ERR_NATIVE_FAILURE))
+              out (if (>= (get value out) btc-amount)
+                (begin
+                  ;; Mark refund as processed
+                  (map-set refund-requests refund-id (merge refund { btc-tx-refund-id: (some result), done: true }))
+                  (map-set processed-refunds result refund-id)
+                  
+                  (print {
+                    type: "process-refund",
+                    refund-id: refund-id,
+                    btc-tx-refund-id: (some result),
+                    done: true
+                  })
+                  
+                  (ok true))
+                ERR_TX_VALUE_TOO_SMALL)
+              ERR_TX_NOT_SENT_TO_POOL)
+          )
+      error (err (* error u1000))))
+)
