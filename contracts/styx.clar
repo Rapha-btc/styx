@@ -15,7 +15,7 @@
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
 (define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
-(define-constant COOLDOWN u6)
+(define-constant COOLDOWN u24) ;; 4 hours extreme cautious 
 (define-constant MIN_SATS u10000) ;; min 10k satoshis 0.0001
 (define-constant FIXED_FEE u2000)
 
