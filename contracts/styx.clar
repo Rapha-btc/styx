@@ -470,7 +470,7 @@
         (btc-amount (get btc-amount refund))
       )
 
-    ;; Verify refund is not already processed
+    (asserts! (>= burn-block-height (+ (get requested-at refund) COOLDOWN)) ERR_IN_COOLDOWN)
     (asserts! (not (get done refund)) ERR_ALREADY_DONE)
     (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)
     
