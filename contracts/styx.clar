@@ -498,7 +498,7 @@
                   ;; Mark refund as processed
                   (map-set refund-requests refund-id (merge refund { btc-tx-refund-id: (some result), done: true }))
                   (map-set processed-refunds result refund-id)
-                  
+
                   (print {
                     type: "process-refund",
                     refund-id: refund-id,
@@ -512,3 +512,21 @@
           )
       error (err (* error u1000))))
 )
+
+;; Get refund request information
+(define-read-only (get-refund-request (refund-id uint))
+  (match (map-get? refund-requests refund-id)
+    refund (ok refund)
+    (err ERR_INVALID_ID)))
+
+;; Check if a refund transaction has been processed
+(define-read-only (is-refund-processed (tx-id (buff 128)))
+  (match (map-get? processed-refunds tx-id)
+    refund-id (ok refund-id)
+    (err ERR_NOT_PROCESSED)
+  )
+)
+
+;; Get total refund requests count
+(define-read-only (get-refund-count)
+  (ok (var-get next-refund-id)))
