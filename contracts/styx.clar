@@ -1,6 +1,6 @@
 ;; Styx v1. Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to Stacks. No Charon needed on this river
-;; — just ultra-fast passage via Clarity's direct Bitcoin state reading. 
+;; just ultra-fast passage via Clarity's direct Bitcoin state reading. 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
 (define-constant ERR_TX_NOT_SENT_TO_POOL (err u106))
@@ -33,8 +33,7 @@
 (define-data-var processed-tx-count uint u1)
 
 (define-data-var pool 
-  {
-    total-sbtc: uint, 
+  { total-sbtc: uint, 
     available-sbtc: uint,
     btc-receiver: (buff 40), 
     last-updated: uint,
@@ -43,10 +42,8 @@
     fee: uint,
     fee-threshold: uint,
     add-liq-signaled-at: (optional uint),
-    set-param-signaled-at: (optional uint)
-  }
-  {
-    total-sbtc: u0,
+    set-param-signaled-at: (optional uint)}
+  { total-sbtc: u0,
     available-sbtc: u0,
     btc-receiver: 0x0000000000000000000000000000000000000000,
     last-updated: u0,
@@ -55,9 +52,7 @@
     fee: u6000,
     fee-threshold: u200000,
     add-liq-signaled-at: none,
-    set-param-signaled-at: none
-  }
-)
+    set-param-signaled-at: none})
 
 (define-map processed-btc-txs 
   (buff 128)  
@@ -66,9 +61,7 @@
     sbtc-amount: uint,
     stx-receiver: principal,
     processed-at: uint,
-    tx-number: uint
-  }
-)
+    tx-number: uint})
 
 ;; ---- Helper functions ----
 (define-read-only (read-uint32 (ctx { txbuff: (buff 4096), index: uint}))
@@ -203,7 +196,6 @@
         ERR_NOT_SIGNALED)))
 
 ;; ---- BTC processing functions ----
-
 (define-read-only (parse-payload-segwit (tx (buff 4096)))
   (match (get-output-segwit tx u0)
     result
@@ -415,8 +407,7 @@
                   (ok refund-id))
             ERR_TX_VALUE_TOO_SMALL)
             ERR_TX_NOT_SENT_TO_POOL))
-      error (err (* error u1000))))
-)
+      error (err (* error u1000)))))
 
 ;; Process a refund by providing proof of BTC return transaction
 (define-public (process-refund
