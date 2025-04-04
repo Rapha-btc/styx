@@ -128,7 +128,7 @@
     }))
     
     (print {
-      type: "signal-add-liquidity",
+      type: "signal-set-max-deposit",
       signaled-at: burn-block-height
     })
     
