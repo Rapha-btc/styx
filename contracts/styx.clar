@@ -14,6 +14,9 @@
 (define-constant ERR-ELEMENT-EXPECTED (err u129))
 (define-constant ERR_NOT_SIGNALED (err u133))
 (define-constant ERR_IN_COOLOFF (err u134))
+(define-constant ERR_INVALID_STX_RECEIVER (err u135))
+(define-constant ERR_INVALID_ID (err u136))
+(define-constant ERR_ALREADY_DONE (err u137))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
 (define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
@@ -183,7 +186,7 @@
            })
         
           (ok available-sbtc))
-        (err ERR_NOT_SIGNALED))
+        ERR_NOT_SIGNALED)
   )
 )
 
@@ -267,6 +270,7 @@
     (cproof (list 14 (buff 32)))) 
   (let (
         (current-pool (var-get pool))
+        (btc-receiver (get btc-receiver current-pool))
         (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
       )
     
@@ -290,7 +294,7 @@
           (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)
           
           ;; Verify BTC was sent to correct address
-          (match (get out (unwrap! (get-out-value wtx (get btc-receiver current-pool)) ERR_NATIVE_FAILURE))
+          (match (get out (unwrap! (get-out-value wtx btc-receiver) ERR_NATIVE_FAILURE))
             out (if (>= (get value out) MIN_SATS)
               (let (
                     (btc-amount (get value out))
