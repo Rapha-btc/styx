@@ -18,30 +18,31 @@
 (define-constant ERR_INVALID_ID (err u136))
 (define-constant ERR_ALREADY_DONE (err u137))
 (define-constant ERR_DEPOSIT_TOO_LARGE (err u138))
+(define-constant ERR_FEE_TOO_LARGE (err u139))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
 (define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
-(define-constant COOLDOWN u24) ;; 4 hours extreme cautious 
-(define-constant MIN_SATS u10000) ;; min 10k satoshis 0.0001
-(define-constant FIXED_FEE u2000)
-(define-constant WITHDRAWAL_COOLOFF u144) ;; 24 hours
+(define-constant COOLDOWN u6) 
+(define-constant MIN_SATS u10000) 
+(define-constant FIXED_FEE u21000)
+(define-constant WITHDRAWAL_COOLOFF u144) 
 
 ;; ---- Data structures ----
 
-;; Counter for processed transactions
 (define-data-var processed-tx-count uint u1)
 
 ;; Pool structure to track sBTC liquidity (single pool per contract)
 (define-data-var pool 
   {
-    total-sbtc: uint, ;; Total sBTC amount originally deposited
+    total-sbtc: uint, 
     available-sbtc: uint,
     btc-receiver: (buff 40), ;; BTC address of the operator
     last-updated: uint,
     withdrawal-signaled-at: (optional uint),
     max-deposit: uint,
+    fee: uint,
     add-liq-signaled-at: (optional uint),
-    set-max-deposit-signaled-at: (optional uint)
+    set-param-signaled-at: (optional uint)
   }
   {
     total-sbtc: u0,
@@ -50,8 +51,9 @@
     last-updated: u0,
     withdrawal-signaled-at: none,
     max-deposit: u1000000,
+    fee: u4100, 
     add-liq-signaled-at: none,
-    set-max-deposit-signaled-at: none
+    set-param-signaled-at: none
   }
 )
 
@@ -98,10 +100,9 @@
   (let (
         (current-pool (var-get pool))
       )
-    ;; Verify caller is the operator
+    
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
     
-    ;; Set signal timestamp
     (var-set pool (merge current-pool { 
       add-liq-signaled-at: (some burn-block-height)
     }))
@@ -115,20 +116,19 @@
   )
 )
 
-(define-public (signal-set-max-deposit)
+(define-public (signal-set-params)
   (let (
         (current-pool (var-get pool))
       )
-    ;; Verify caller is the operator
+
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
     
-    ;; Set signal timestamp
     (var-set pool (merge current-pool { 
-      set-max-deposit-signaled-at: (some burn-block-height)
+      set-param-signaled-at: (some burn-block-height)
     }))
     
     (print {
-      type: "signal-set-max-deposit",
+      type: "signal-set-params",
       signaled-at: burn-block-height
     })
     
@@ -185,13 +185,14 @@
 )
 
 ;; to update the maximum deposit limit
-(define-public (set-max-deposit (new-max-deposit uint))
+(define-public (set-params (new-max-deposit uint) (fee uint))
   (let (
         (current-pool (var-get pool))
-        (signaled-at (default-to u0 (get set-max-deposit-signaled-at current-pool)))
+        (signaled-at (default-to u0 (get set-param-signaled-at current-pool)))
       )
     (asserts! (not (is-eq signaled-at u0)) ERR_NOT_SIGNALED)
     (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
+    (asserts! (<= fee FIXED_FEE) ERR_FEE_TOO_LARGE)
 
     ;; Verify caller is the operator
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
@@ -200,12 +201,13 @@
     (asserts! (> new-max-deposit MIN_SATS) ERR_AMOUNT_NULL)
     
     ;; Update max-deposit
-    (var-set pool (merge current-pool { last-updated: burn-block-height, max-deposit: new-max-deposit, set-max-deposit-signaled-at: none }))
+    (var-set pool (merge current-pool { last-updated: burn-block-height, max-deposit: new-max-deposit, fee: fee, set-param-signaled-at: none }))
     
     (print {
       type: "set-max-deposit",
       max-deposit: new-max-deposit,
-      set-max-deposit-signaled-at: none,
+      fee: fee,
+      set-param-signaled-at: none,
       last-updated: burn-block-height})
     
     (ok true)
@@ -351,6 +353,7 @@
     (cproof (list 14 (buff 32)))) 
   (let (
         (current-pool (var-get pool))
+        (fixed-fee (get fee current-pool))
         (btc-receiver (get btc-receiver current-pool))
         (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
       )
@@ -381,7 +384,7 @@
                     (btc-amount (get value out))
                     (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                     (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                    (sbtc-amount-out (- btc-amount FIXED_FEE))
+                    (sbtc-amount-out (- btc-amount fixed-fee))
                     (available-sbtc (get available-sbtc current-pool))
                     (current-count (var-get processed-tx-count))
                     (max-deposit (get max-deposit current-pool))
@@ -411,7 +414,7 @@
                    
                    ;; Transfer fee to fee receiver
                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                             transfer FIXED_FEE tx-sender FEE-RECEIVER none)))
+                             transfer fixed-fee tx-sender FEE-RECEIVER none)))
                    
                    ;; Transfer sBTC to user
                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
@@ -528,7 +531,7 @@
                   (map-set processed-btc-txs result 
                     {
                       btc-amount: btc-amount,
-                      sbtc-amount: (- btc-amount FIXED_FEE),
+                      sbtc-amount: u0,
                       stx-receiver: stx-receiver,
                       processed-at: burn-block-height,
                       tx-number: u0
