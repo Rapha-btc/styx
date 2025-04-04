@@ -17,6 +17,7 @@
 (define-constant ERR_INVALID_STX_RECEIVER (err u135))
 (define-constant ERR_INVALID_ID (err u136))
 (define-constant ERR_ALREADY_DONE (err u137))
+(define-constant ERR_DEPOSIT_TOO_LARGE (err u138))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
 (define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
@@ -37,14 +38,20 @@
     available-sbtc: uint,
     btc-receiver: (buff 40), ;; BTC address of the operator
     last-updated: uint,
-    withdrawal-signaled-at: (optional uint)
+    withdrawal-signaled-at: (optional uint),
+    max-deposit: uint,
+    add-liq-signaled-at: (optional uint),
+    set-max-deposit-signaled-at: (optional uint)
   }
   {
     total-sbtc: u0,
     available-sbtc: u0,
     btc-receiver: 0x0000000000000000000000000000000000000000,
     last-updated: u0,
-    withdrawal-signaled-at: none
+    withdrawal-signaled-at: none,
+    max-deposit: u1000000,
+    add-liq-signaled-at: none,
+    set-max-deposit-signaled-at: none
   }
 )
 
@@ -87,6 +94,48 @@
 
 ;; ---- Pool initialization ----
 
+(define-public (signal-add-liquidity)
+  (let (
+        (current-pool (var-get pool))
+      )
+    ;; Verify caller is the operator
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
+    
+    ;; Set signal timestamp
+    (var-set pool (merge current-pool { 
+      add-liq-signaled-at: (some burn-block-height)
+    }))
+    
+    (print {
+      type: "signal-add-liquidity",
+      signaled-at: burn-block-height
+    })
+    
+    (ok true)
+  )
+)
+
+(define-public (signal-set-max-deposit)
+  (let (
+        (current-pool (var-get pool))
+      )
+    ;; Verify caller is the operator
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
+    
+    ;; Set signal timestamp
+    (var-set pool (merge current-pool { 
+      set-max-deposit-signaled-at: (some burn-block-height)
+    }))
+    
+    (print {
+      type: "signal-add-liquidity",
+      signaled-at: burn-block-height
+    })
+    
+    (ok true)
+  )
+)
+
 ;; Initialize or add liquidity to pool
 (define-public (add-liquidity-to-pool (sbtc-amount uint) (btc-receiver (optional (buff 40))))
   (let (
@@ -94,7 +143,10 @@
         (this-bitcoin-receiver (default-to (get btc-receiver current-pool) btc-receiver))
         (new-total (+ (get total-sbtc current-pool) sbtc-amount))
         (new-available (+ (get available-sbtc current-pool) sbtc-amount))
+        (signaled-at (default-to u0 (get add-liq-signaled-at current-pool)))
       )
+    (asserts! (not (is-eq signaled-at u0)) ERR_NOT_SIGNALED)
+    (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
     ;; Verify caller is the operator
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
     
@@ -112,7 +164,8 @@
                     total-sbtc: new-total,
                     available-sbtc: new-available,
                     btc-receiver: this-bitcoin-receiver,
-                    last-updated: burn-block-height
+                    last-updated: burn-block-height,
+                    add-liq-signaled-at: none 
                   }))
         
         (print {
@@ -128,6 +181,34 @@
       )
       error (err (* error u1000))
     )
+  )
+)
+
+;; to update the maximum deposit limit
+(define-public (set-max-deposit (new-max-deposit uint))
+  (let (
+        (current-pool (var-get pool))
+        (signaled-at (default-to u0 (get set-max-deposit-signaled-at current-pool)))
+      )
+    (asserts! (not (is-eq signaled-at u0)) ERR_NOT_SIGNALED)
+    (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
+
+    ;; Verify caller is the operator
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
+    
+    ;; Verify amount is more than min 
+    (asserts! (> new-max-deposit MIN_SATS) ERR_AMOUNT_NULL)
+    
+    ;; Update max-deposit
+    (var-set pool (merge current-pool { last-updated: burn-block-height, max-deposit: new-max-deposit, set-max-deposit-signaled-at: none }))
+    
+    (print {
+      type: "set-max-deposit",
+      max-deposit: new-max-deposit,
+      set-max-deposit-signaled-at: none,
+      last-updated: burn-block-height})
+    
+    (ok true)
   )
 )
 
@@ -303,10 +384,12 @@
                     (sbtc-amount-out (- btc-amount FIXED_FEE))
                     (available-sbtc (get available-sbtc current-pool))
                     (current-count (var-get processed-tx-count))
+                    (max-deposit (get max-deposit current-pool))
                    ) 
                    
                    ;; Verify sufficient balance in pool
                    (asserts! (<= btc-amount available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
+                   (asserts! (<= btc-amount max-deposit) ERR_DEPOSIT_TOO_LARGE)
                    
                    ;; Record processed transaction
                    (map-set processed-btc-txs result 
