@@ -12,12 +12,15 @@
 (define-constant ERR-TRANSACTION-SEGWIT (err u130))
 (define-constant ERR-TRANSACTION (err u131))
 (define-constant ERR-ELEMENT-EXPECTED (err u129))
+(define-constant ERR_NOT_SIGNALED (err u133))
+(define-constant ERR_IN_COOLOFF (err u134))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
 (define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
 (define-constant COOLDOWN u24) ;; 4 hours extreme cautious 
 (define-constant MIN_SATS u10000) ;; min 10k satoshis 0.0001
 (define-constant FIXED_FEE u2000)
+(define-constant WITHDRAWAL_COOLOFF u144) ;; 24 hours
 
 ;; ---- Data structures ----
 
@@ -30,13 +33,15 @@
     total-sbtc: uint, ;; Total sBTC amount originally deposited
     available-sbtc: uint,
     btc-receiver: (buff 40), ;; BTC address of the operator
-    last-updated: uint
+    last-updated: uint,
+    withdrawal-signaled-at: (optional uint)
   }
   {
     total-sbtc: u0,
     available-sbtc: u0,
     btc-receiver: 0x0000000000000000000000000000000000000000,
-    last-updated: u0
+    last-updated: u0,
+    withdrawal-signaled-at: none
   }
 )
 
@@ -123,6 +128,30 @@
   )
 )
 
+;; Signal intent to withdraw on chain
+(define-public (signal-withdrawal)
+  (let (
+        (current-pool (var-get pool))
+      )
+    ;; Verify caller is the operator
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
+    
+    ;; Verify there is available balance to withdraw
+    (asserts! (> (get available-sbtc current-pool) u0) ERR_INSUFFICIENT_POOL_BALANCE)
+    
+    ;; Set withdrawal signal
+    (var-set pool (merge current-pool 
+      { withdrawal-signaled-at: (some burn-block-height) }))
+    
+    (print {
+      type: "signal-withdrawal",
+      withdrawal-signaled-at: burn-block-height
+    })
+    
+    (ok true)
+  )
+)
+
 ;; Withdraw remaining sBTC from pool (operator only)
 (define-public (withdraw-from-pool)
   (let (
@@ -135,19 +164,26 @@
     ;; Verify there is available balance
     (asserts! (> available-sbtc u0) ERR_INSUFFICIENT_POOL_BALANCE)
     
-    ;; Update pool - set available to 0
-    (var-set pool (merge current-pool { available-sbtc: u0 }))
+        ;; Verify withdrawal was signaled
+    (match (get withdrawal-signaled-at current-pool)
+      some-height 
+        (begin
+          ;; Verify cool-off period has passed
+          (asserts! (> burn-block-height (+ some-height WITHDRAWAL_COOLOFF)) ERR_IN_COOLOFF)
+          ;; Update pool - set available to 0
+          (var-set pool (merge current-pool { available-sbtc: u0, withdrawal-signaled-at: none }))
     
-    ;; Transfer sBTC to operator
-    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-            transfer available-sbtc tx-sender OPERATOR_STYX none)))
-    
-    (print {
-      type: "withdraw-from-pool",
-      sbtc-amount: available-sbtc
-    })
-    
-    (ok available-sbtc)
+          ;; Transfer sBTC to operator
+          (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                    transfer available-sbtc tx-sender OPERATOR_STYX none)))
+                
+          (print {
+             type: "withdraw-from-pool",
+             sbtc-amount: available-sbtc
+           })
+        
+          (ok available-sbtc))
+        (err ERR_NOT_SIGNALED))
   )
 )
 
@@ -502,7 +538,7 @@
                   (print {
                     type: "process-refund",
                     refund-id: refund-id,
-                    btc-tx-refund-id: (some result),
+                    btc-tx-refund-id: result,
                     done: true
                   })
                   
