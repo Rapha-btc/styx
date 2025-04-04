@@ -1,4 +1,6 @@
-;; ---- Constants ----
+;; Styx v1. Pool structure to track sBTC liquidity (single pool per contract)
+;; Trustless one-way bridge from Bitcoin to Stacks. No Charon needed on this river
+;; — just ultra-fast passage via Clarity's direct Bitcoin state reading. 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
 (define-constant ERR_TX_NOT_SENT_TO_POOL (err u106))
@@ -28,19 +30,18 @@
 (define-constant WITHDRAWAL_COOLOFF u144) 
 
 ;; ---- Data structures ----
-
 (define-data-var processed-tx-count uint u1)
 
-;; Pool structure to track sBTC liquidity (single pool per contract)
 (define-data-var pool 
   {
     total-sbtc: uint, 
     available-sbtc: uint,
-    btc-receiver: (buff 40), ;; BTC address of the operator
+    btc-receiver: (buff 40), 
     last-updated: uint,
     withdrawal-signaled-at: (optional uint),
     max-deposit: uint,
     fee: uint,
+    fee-threshold: uint,
     add-liq-signaled-at: (optional uint),
     set-param-signaled-at: (optional uint)
   }
@@ -51,15 +52,15 @@
     last-updated: u0,
     withdrawal-signaled-at: none,
     max-deposit: u1000000,
-    fee: u4100, 
+    fee: u6000,
+    fee-threshold: u200000,
     add-liq-signaled-at: none,
     set-param-signaled-at: none
   }
 )
 
-;; Track processed BTC transactions
 (define-map processed-btc-txs 
-  (buff 128)  ;; BTC transaction ID
+  (buff 128)  
   {
     btc-amount: uint,
     sbtc-amount: uint,
@@ -70,21 +71,17 @@
 )
 
 ;; ---- Helper functions ----
-
-;; Read 32-bit unsigned integer in little-endian format
 (define-read-only (read-uint32 (ctx { txbuff: (buff 4096), index: uint}))
 		(let ((data (get txbuff ctx))
 					(base (get index ctx)))
 				(ok {uint32: (buff-to-uint-le (unwrap-panic (as-max-len? (unwrap! (slice? data base (+ base u4)) (err ERR-OUT-OF-BOUNDS)) u4))),
 						 ctx: { txbuff: data, index: (+ u4 base)}})))
 
-;; Find output in BTC transaction for a given address
 (define-private (find-out (entry {scriptPubKey: (buff 128), value: (buff 8)}) (result {pubscriptkey: (buff 40), out: (optional {scriptPubKey: (buff 128), value: uint})}))
   (if (is-eq (get scriptPubKey entry) (get pubscriptkey result))
     (merge result {out: (some {scriptPubKey: (get scriptPubKey entry), value: (get uint32 (unwrap-panic (read-uint32 {txbuff: (get value entry), index: u0})))})})
     result))
 
-;; Get BTC output value for a given address
 (define-public (get-out-value (tx {
     version: (buff 4),
     ins: (list 8
@@ -95,70 +92,44 @@
     (ok (fold find-out (get outs tx) {pubscriptkey: pubscriptkey, out: none})))
 
 ;; ---- Pool initialization ----
-
 (define-public (signal-add-liquidity)
-  (let (
-        (current-pool (var-get pool))
-      )
-    
+  (let ((current-pool (var-get pool)))
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
-    
     (var-set pool (merge current-pool { 
       add-liq-signaled-at: (some burn-block-height)
     }))
-    
     (print {
       type: "signal-add-liquidity",
       signaled-at: burn-block-height
     })
-    
-    (ok true)
-  )
-)
+    (ok true)))
 
 (define-public (signal-set-params)
-  (let (
-        (current-pool (var-get pool))
-      )
-
+  (let ((current-pool (var-get pool)))
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
-    
     (var-set pool (merge current-pool { 
       set-param-signaled-at: (some burn-block-height)
     }))
-    
     (print {
       type: "signal-set-params",
       signaled-at: burn-block-height
     })
-    
-    (ok true)
-  )
-)
+    (ok true)))
 
-;; Initialize or add liquidity to pool
 (define-public (add-liquidity-to-pool (sbtc-amount uint) (btc-receiver (optional (buff 40))))
-  (let (
-        (current-pool (var-get pool))
+  (let ((current-pool (var-get pool))
         (this-bitcoin-receiver (default-to (get btc-receiver current-pool) btc-receiver))
         (new-total (+ (get total-sbtc current-pool) sbtc-amount))
         (new-available (+ (get available-sbtc current-pool) sbtc-amount))
-        (signaled-at (default-to u0 (get add-liq-signaled-at current-pool)))
-      )
+        (signaled-at (default-to u0 (get add-liq-signaled-at current-pool))))
     (asserts! (not (is-eq signaled-at u0)) ERR_NOT_SIGNALED)
     (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
-    ;; Verify caller is the operator
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
-    
-    ;; Verify parameters
     (asserts! (> sbtc-amount u0) ERR_AMOUNT_NULL)
-    
-    ;; Transfer sBTC to contract
     (match (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                 transfer sbtc-amount tx-sender (as-contract tx-sender) none)
       success 
       (begin
-        ;; Update pool - set or update BTC receiver if provided
         (var-set pool (merge current-pool 
                   {
                     total-sbtc: new-total,
@@ -167,7 +138,6 @@
                     last-updated: burn-block-height,
                     add-liq-signaled-at: none 
                   }))
-        
         (print {
           type: "add-liquidity",
           operator: tx-sender,
@@ -177,163 +147,97 @@
           available-sbtc: new-available,
           last-updated: burn-block-height
         })
-        (ok true)
-      )
-      error (err (* error u1000))
-    )
-  )
-)
+        (ok true))
+      error (err (* error u1000)))))
 
-;; to update the maximum deposit limit
-(define-public (set-params (new-max-deposit uint) (fee uint))
-  (let (
-        (current-pool (var-get pool))
-        (signaled-at (default-to u0 (get set-param-signaled-at current-pool)))
-      )
+(define-public (set-params (new-max-deposit uint) (fee uint) (fee-threshold uint))
+  (let ((current-pool (var-get pool))
+        (signaled-at (default-to u0 (get set-param-signaled-at current-pool))))
     (asserts! (not (is-eq signaled-at u0)) ERR_NOT_SIGNALED)
     (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
     (asserts! (<= fee FIXED_FEE) ERR_FEE_TOO_LARGE)
-
-    ;; Verify caller is the operator
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
-    
-    ;; Verify amount is more than min 
     (asserts! (> new-max-deposit MIN_SATS) ERR_AMOUNT_NULL)
-    
-    ;; Update max-deposit
-    (var-set pool (merge current-pool { last-updated: burn-block-height, max-deposit: new-max-deposit, fee: fee, set-param-signaled-at: none }))
-    
+    (var-set pool (merge current-pool 
+                    { last-updated: burn-block-height, 
+                    max-deposit: new-max-deposit, 
+                    fee: fee, 
+                    fee-threshold: fee-threshold, 
+                    set-param-signaled-at: none }))
     (print {
       type: "set-max-deposit",
       max-deposit: new-max-deposit,
       fee: fee,
+      fee-threshold: fee-threshold,
       set-param-signaled-at: none,
       last-updated: burn-block-height})
-    
-    (ok true)
-  )
-)
+    (ok true)))
 
-;; Signal intent to withdraw on chain
 (define-public (signal-withdrawal)
-  (let (
-        (current-pool (var-get pool))
-      )
-    ;; Verify caller is the operator
+  (let ((current-pool (var-get pool)))
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
-    
-    ;; Verify there is available balance to withdraw
     (asserts! (> (get available-sbtc current-pool) u0) ERR_INSUFFICIENT_POOL_BALANCE)
-    
-    ;; Set withdrawal signal
     (var-set pool (merge current-pool 
       { withdrawal-signaled-at: (some burn-block-height) }))
-    
     (print {
       type: "signal-withdrawal",
-      withdrawal-signaled-at: burn-block-height
-    })
-    
-    (ok true)
-  )
-)
+      withdrawal-signaled-at: burn-block-height})
+    (ok true)))
 
-;; Withdraw remaining sBTC from pool (operator only)
 (define-public (withdraw-from-pool)
-  (let (
-        (current-pool (var-get pool))
-        (available-sbtc (get available-sbtc current-pool))
-      )
-    ;; Verify caller is the operator
+  (let ((current-pool (var-get pool))
+        (available-sbtc (get available-sbtc current-pool)))
     (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
-    
-    ;; Verify there is available balance
     (asserts! (> available-sbtc u0) ERR_INSUFFICIENT_POOL_BALANCE)
-    
-        ;; Verify withdrawal was signaled
     (match (get withdrawal-signaled-at current-pool)
       some-height 
         (begin
-          ;; Verify cool-off period has passed
           (asserts! (> burn-block-height (+ some-height WITHDRAWAL_COOLOFF)) ERR_IN_COOLOFF)
-          ;; Update pool - set available to 0
           (var-set pool (merge current-pool { available-sbtc: u0, withdrawal-signaled-at: none }))
-    
-          ;; Transfer sBTC to operator
           (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                    transfer available-sbtc tx-sender OPERATOR_STYX none)))
-                
+                    transfer available-sbtc tx-sender OPERATOR_STYX none)))  
           (print {
              type: "withdraw-from-pool",
-             sbtc-amount: available-sbtc
-           })
-        
+             sbtc-amount: available-sbtc})
           (ok available-sbtc))
-        ERR_NOT_SIGNALED)
-  )
-)
+        ERR_NOT_SIGNALED)))
 
 ;; ---- BTC processing functions ----
 
-;; Parse the payload from a segwit transaction
 (define-read-only (parse-payload-segwit (tx (buff 4096)))
   (match (get-output-segwit tx u0)
     result
-    (let
-      (
-        (script (get scriptPubKey result))
-        (script-len (len script))
-        ;; lenght is dynamic one or two bytes!
-        (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
-        (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
-      )
-      (ok (from-consensus-buff? { p: principal } payload))
-    )
-    not-found ERR-ELEMENT-EXPECTED
-  )
-)
+    (let ((script (get scriptPubKey result))
+          (script-len (len script))
+          (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
+          (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED)))
+         (ok (from-consensus-buff? { p: principal } payload)))
+    not-found ERR-ELEMENT-EXPECTED))
 
 (define-read-only (parse-payload-segwit-refund (tx (buff 4096)))
   (match (get-output-segwit tx u0)
     result
-    (let
-      (
-        (script (get scriptPubKey result))
-        (script-len (len script))
-        ;; lenght is dynamic one or two bytes!
-        (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
-        (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
-      )
-      (ok (from-consensus-buff? { i: uint } payload))
-    )
-    not-found ERR-ELEMENT-EXPECTED
-  )
-)
+    (let ((script (get scriptPubKey result))
+          (script-len (len script))
+          (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
+          (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED)))
+         (ok (from-consensus-buff? { i: uint } payload)))
+    not-found ERR-ELEMENT-EXPECTED))
 
-;; Get output from a segwit transaction
 (define-read-only (get-output-segwit (tx (buff 4096)) (index uint))
   (let
-    (
-      (parsed-tx (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 parse-wtx tx false))
-    )
+    ((parsed-tx (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 parse-wtx tx false)))
     (match parsed-tx
       result
-      (let
-        (
-          (tx-data (unwrap-panic parsed-tx)) 
-          (outs (get outs tx-data)) 
-          (out (unwrap! (element-at? outs index) ERR-TRANSACTION-SEGWIT))
-          (scriptPubKey (get scriptPubKey out))
-          (value (get value out)) 
-        )
-        (ok { scriptPubKey: scriptPubKey, value: value })
-      )
-      missing ERR-TRANSACTION
-    )
-  )
-)
+      (let ((tx-data (unwrap-panic parsed-tx)) 
+            (outs (get outs tx-data)) 
+            (out (unwrap! (element-at? outs index) ERR-TRANSACTION-SEGWIT))
+            (scriptPubKey (get scriptPubKey out))
+            (value (get value out)))
+           (ok { scriptPubKey: scriptPubKey, value: value }))
+      missing ERR-TRANSACTION)))
 
-;; Process a BTC deposit and release sBTC - can be called by anyone
+;; Process a BTC deposit and release sBTC - by anyone
 (define-public (process-btc-deposit
     (height uint) 
     (wtx {version: (buff 4),
@@ -351,16 +255,11 @@
     (witness-reserved-value (buff 32)) 
     (ctx (buff 1024)) 
     (cproof (list 14 (buff 32)))) 
-  (let (
-        (current-pool (var-get pool))
+  (let ((current-pool (var-get pool))
         (fixed-fee (get fee current-pool))
         (btc-receiver (get btc-receiver current-pool))
-        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
-      )
-    
+        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data)))
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN)) ERR_IN_COOLDOWN)
-
-    ;; Verify Bitcoin transaction proof
     (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-segwit-tx-mined-compact
                     height 
                     tx-buff 
@@ -374,107 +273,79 @@
                     cproof)
       result
         (begin
-          ;; Verify transaction is not already used
-          (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)
-          
-          ;; Verify BTC was sent to correct address
+          (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)          
           (match (get out (unwrap! (get-out-value wtx btc-receiver) ERR_NATIVE_FAILURE))
             out (if (>= (get value out) MIN_SATS)
-              (let (
-                    (btc-amount (get value out))
+              (let ((btc-amount (get value out))
                     (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                     (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                    (sbtc-amount-out (- btc-amount fixed-fee))
+                    (this-fee   (if (< btc-amount (get fee-threshold current-pool))
+                                    (/ fixed-fee u2)
+                                    fixed-fee))
+                    (sbtc-amount-to-user (- btc-amount this-fee))
                     (available-sbtc (get available-sbtc current-pool))
                     (current-count (var-get processed-tx-count))
-                    (max-deposit (get max-deposit current-pool))
-                   ) 
-                   
-                   ;; Verify sufficient balance in pool
+                    (max-deposit (get max-deposit current-pool))) 
                    (asserts! (<= btc-amount available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
                    (asserts! (<= btc-amount max-deposit) ERR_DEPOSIT_TOO_LARGE)
-                   
-                   ;; Record processed transaction
                    (map-set processed-btc-txs result 
-                     {
-                       btc-amount: btc-amount,
-                       sbtc-amount: sbtc-amount-out,
+                     { btc-amount: btc-amount,
+                       sbtc-amount: sbtc-amount-to-user,
                        stx-receiver: stx-receiver,
                        processed-at: burn-block-height,
-                       tx-number: current-count
-                     })
-                    
+                       tx-number: current-count})  
                     (var-set processed-tx-count (+ current-count u1))
-
-                   ;; Update pool's available balance
                    (var-set pool 
                      (merge current-pool 
-                       { available-sbtc: (- available-sbtc btc-amount) }
-                     ))
-                   
-                   ;; Transfer fee to fee receiver
+                       { available-sbtc: (- available-sbtc btc-amount) }))  
                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                             transfer fixed-fee tx-sender FEE-RECEIVER none)))
-                   
-                   ;; Transfer sBTC to user
+                             transfer this-fee tx-sender FEE-RECEIVER none)))
                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                             transfer sbtc-amount-out tx-sender stx-receiver none)))
-                   
+                             transfer sbtc-amount-to-user tx-sender stx-receiver none)))
                    (print {
                      type: "process-btc-deposit",
                      btc-tx-id: result,
                      btc-amount: btc-amount,
-                     sbtc-amount-out: sbtc-amount-out,
+                     sbtc-amount-to-user: sbtc-amount-to-user,
                      stx-receiver: stx-receiver,
                      btc-receiver: btc-receiver,
                      when: burn-block-height,
-                     processor: tx-sender
-                   })
-                   
+                     processor: tx-sender})
                    (ok true))
             ERR_TX_VALUE_TOO_SMALL)
             ERR_TX_NOT_SENT_TO_POOL))
-      error (err (* error u1000))))
-)
+      error (err (* error u1000)))))
 
 ;; ---- Read-only functions ----
-
-;; Get pool information
 (define-read-only (get-pool)
   (ok (var-get pool)))
 
-;; Check if a transaction has been processed
 (define-read-only (is-tx-processed (tx-id (buff 128)))
   (is-some (map-get? processed-btc-txs tx-id)))
 
-;; Get transaction details
 (define-read-only (get-processed-tx (tx-id (buff 128)))
   (match (map-get? processed-btc-txs tx-id)
     tx-info (ok tx-info)
     (err ERR_NOT_PROCESSED)))
 
 ;; ---- Edge case functions ----
-
-;; Add a map to track refund requests
 (define-map refund-requests
-  uint  ;; refund-id
+  uint  
   {
     btc-tx-id: (buff 128),        ;; Original BTC transaction ID
     btc-tx-refund-id: (optional (buff 128)),
     btc-amount: uint,             ;; Original BTC amount
     btc-receiver: (buff 40),      ;; Where to send the BTC refund
     stx-receiver: principal,      ;; can only be requested by stx receiver
-    requested-at: uint,           ;; When refund was requested
-    done: bool                    ;; If refund has been processed
+    requested-at: uint,          
+    done: bool                    
   }
 )
 
-(define-map processed-refunds (buff 128)  uint) ;; BTC transaction ID
+(define-map processed-refunds (buff 128)  uint) 
 
-;; Counter for refund requests
 (define-data-var next-refund-id uint u1)
 
-;; Request a refund for a BTC transaction
 (define-public (request-refund
     (btc-refund-receiver (buff 40))
     (height uint) 
@@ -493,12 +364,8 @@
     (witness-reserved-value (buff 32)) 
     (ctx (buff 1024)) 
     (cproof (list 14 (buff 32))))
-  (let (
-        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
-        (refund-id (var-get next-refund-id))
-      )
-    
-    ;; Verify Bitcoin transaction included in Block and returns tsxId hash
+  (let ((tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
+        (refund-id (var-get next-refund-id)))
     (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-segwit-tx-mined-compact
                     height 
                     tx-buff 
@@ -512,32 +379,20 @@
                     cproof)
       result
         (begin
-          ;; Verify transaction is not already processed
-          (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)
-          
-          ;; Extract STX receiver from transaction
+          (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)          
           (match (get out (unwrap! (get-out-value wtx (get btc-receiver (var-get pool))) ERR_NATIVE_FAILURE))
             out (if (>= (get value out) MIN_SATS) 
-              (let (
-                    (btc-amount (get value out))
+              (let ((btc-amount (get value out))
                     (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
-                    (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                  )
-                  
-                  ;; Verify caller is the STX receiver from transaction
+                    (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED)))
                   (asserts! (is-eq tx-sender stx-receiver) ERR_INVALID_STX_RECEIVER)
-                  
-                  ;; Mark original transaction as used
                   (map-set processed-btc-txs result 
                     {
                       btc-amount: btc-amount,
                       sbtc-amount: u0,
                       stx-receiver: stx-receiver,
                       processed-at: burn-block-height,
-                      tx-number: u0
-                    })
-
-                  ;; Create refund request
+                      tx-number: u0})
                   (map-set refund-requests refund-id
                     {
                       btc-tx-id: result,
@@ -546,12 +401,8 @@
                       btc-receiver: btc-refund-receiver,
                       stx-receiver: stx-receiver,
                       requested-at: burn-block-height,
-                      done: false
-                    })
-                  
-                  ;; Increment counters
+                      done: false})                  
                   (var-set next-refund-id (+ refund-id u1))
-                  
                   (print {
                     type: "request-refund",
                     refund-id: refund-id,
@@ -560,9 +411,7 @@
                     btc-receiver: btc-refund-receiver,
                     stx-receiver: stx-receiver,
                     requested-at: burn-block-height,
-                    done: false
-                  })
-                  
+                    done: false})
                   (ok refund-id))
             ERR_TX_VALUE_TOO_SMALL)
             ERR_TX_NOT_SENT_TO_POOL))
@@ -588,19 +437,14 @@
     (witness-reserved-value (buff 32)) 
     (ctx (buff 1024)) 
     (cproof (list 14 (buff 32)))) 
-  (let (
-        (refund (unwrap! (map-get? refund-requests refund-id) ERR_INVALID_ID))
+  (let ((refund (unwrap! (map-get? refund-requests refund-id) ERR_INVALID_ID))
         (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1 concat-wtx wtx witness-data))
         (payload (unwrap! (parse-payload-segwit-refund tx-buff) ERR-ELEMENT-EXPECTED))
         (refund-id-extracted (unwrap! (get i payload) ERR-ELEMENT-EXPECTED))
-        (btc-amount (get btc-amount refund))
-      )
-
+        (btc-amount (get btc-amount refund)))
     (asserts! (>= burn-block-height (+ (get requested-at refund) COOLDOWN)) ERR_IN_COOLDOWN)
     (asserts! (not (get done refund)) ERR_ALREADY_DONE)
-    (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)
-    
-    ;; Verify Bitcoin transaction prrefund anchored
+    (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)    
     (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-segwit-tx-mined-compact
                     height 
                     tx-buff 
@@ -614,45 +458,31 @@
                     cproof)
       result
         (begin
-          ;; Verify transaction is not already used
-          (asserts! (is-none (map-get? processed-refunds result)) ERR_BTC_TX_ALREADY_USED)
-            
-          ;; Verify BTC amount sent to btc-receiver
+          (asserts! (is-none (map-get? processed-refunds result)) ERR_BTC_TX_ALREADY_USED)            
           (match (get out (unwrap! (get-out-value wtx (get btc-receiver refund)) ERR_NATIVE_FAILURE))
               out (if (>= (get value out) btc-amount)
                 (begin
-                  ;; Mark refund as processed
                   (map-set refund-requests refund-id (merge refund { btc-tx-refund-id: (some result), done: true }))
                   (map-set processed-refunds result refund-id)
-
                   (print {
                     type: "process-refund",
                     refund-id: refund-id,
                     btc-tx-refund-id: result,
-                    done: true
-                  })
-                  
+                    done: true})
                   (ok true))
                 ERR_TX_VALUE_TOO_SMALL)
-              ERR_TX_NOT_SENT_TO_POOL)
-          )
-      error (err (* error u1000))))
-)
+              ERR_TX_NOT_SENT_TO_POOL))
+      error (err (* error u1000)))))
 
-;; Get refund request information
 (define-read-only (get-refund-request (refund-id uint))
   (match (map-get? refund-requests refund-id)
     refund (ok refund)
     (err ERR_INVALID_ID)))
 
-;; Check if a refund transaction has been processed
 (define-read-only (is-refund-processed (tx-id (buff 128)))
   (match (map-get? processed-refunds tx-id)
     refund-id (ok refund-id)
-    (err ERR_NOT_PROCESSED)
-  )
-)
+    (err ERR_NOT_PROCESSED)))
 
-;; Get total refund requests count
 (define-read-only (get-refund-count)
   (ok (var-get next-refund-id)))
