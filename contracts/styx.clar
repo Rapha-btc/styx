@@ -588,6 +588,109 @@
               ERR_TX_NOT_SENT_TO_POOL))
       error (err (* error u1000)))))
 
+;; Refund Legacy
+(define-public (request-refund-legacy
+    (btc-refund-receiver (buff 40))
+    (height uint)
+    (blockheader (buff 80))
+    (tx {version: (buff 4),
+      ins: (list 8
+        {outpoint: {hash: (buff 32), index: (buff 4)}, scriptSig: (buff 256), sequence: (buff 4)}),
+      outs: (list 8
+        {value: (buff 8), scriptPubKey: (buff 128)}),
+      locktime: (buff 4)})
+    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint }))
+  (let ((tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-helper concat-tx tx))
+        (refund-id (var-get next-refund-id)))
+       (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-tx-mined-compact
+                height 
+                tx-buff 
+                blockheader 
+                proof)
+      result
+        (begin
+          (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)          
+          (match (get out (unwrap! (get-out-value tx (get btc-receiver (var-get pool))) ERR_NATIVE_FAILURE))
+            out (if (>= (get value out) MIN_SATS) 
+              (let ((btc-amount (get value out))
+                    (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
+                    (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED)))
+                  (asserts! (is-eq tx-sender stx-receiver) ERR_INVALID_STX_RECEIVER)
+                  (map-set processed-btc-txs result 
+                    {
+                      btc-amount: btc-amount,
+                      sbtc-amount: u0,
+                      stx-receiver: stx-receiver,
+                      processed-at: burn-block-height,
+                      tx-number: u0})
+                  (map-set refund-requests refund-id
+                    {
+                      btc-tx-id: result,
+                      btc-tx-refund-id: none,
+                      btc-amount: btc-amount,
+                      btc-receiver: btc-refund-receiver,
+                      stx-receiver: stx-receiver,
+                      requested-at: burn-block-height,
+                      done: false})                  
+                  (var-set next-refund-id (+ refund-id u1))
+                  (print {
+                    type: "request-refund",
+                    refund-id: refund-id,
+                    btc-tx-id: result,
+                    btc-amount: btc-amount,
+                    btc-receiver: btc-refund-receiver,
+                    stx-receiver: stx-receiver,
+                    requested-at: burn-block-height,
+                    done: false})
+                  (ok refund-id))
+            ERR_TX_VALUE_TOO_SMALL)
+            ERR_TX_NOT_SENT_TO_POOL))
+      error (err (* error u1000)))))
+
+;; Process a refund by providing proof of BTC return transaction
+(define-public (process-refund-legacy
+    (refund-id uint)
+    (height uint)
+    (blockheader (buff 80))
+    (tx {version: (buff 4),
+      ins: (list 8
+        {outpoint: {hash: (buff 32), index: (buff 4)}, scriptSig: (buff 256), sequence: (buff 4)}),
+      outs: (list 8
+        {value: (buff 8), scriptPubKey: (buff 128)}),
+      locktime: (buff 4)})
+    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint }))
+  (let ((refund (unwrap! (map-get? refund-requests refund-id) ERR_INVALID_ID))
+        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-helper concat-tx tx))
+        (payload (unwrap! (parse-payload-legacy-refund tx-buff) ERR-ELEMENT-EXPECTED))
+        (refund-id-extracted (unwrap! (get i payload) ERR-ELEMENT-EXPECTED))
+        (btc-amount (get btc-amount refund)))
+    (asserts! (>= burn-block-height (+ (get requested-at refund) COOLDOWN)) ERR_IN_COOLDOWN)
+    (asserts! (not (get done refund)) ERR_ALREADY_DONE)
+    (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)    
+    (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-tx-mined-compact
+                height 
+                tx-buff 
+                blockheader 
+                proof)
+      result
+        (begin
+          (asserts! (is-none (map-get? processed-refunds result)) ERR_BTC_TX_ALREADY_USED)            
+          (match (get out (unwrap! (get-out-value tx (get btc-receiver refund)) ERR_NATIVE_FAILURE))
+              out (if (>= (get value out) btc-amount)
+                (begin
+                  (map-set refund-requests refund-id (merge refund { btc-tx-refund-id: (some result), done: true }))
+                  (map-set processed-refunds result refund-id)
+                  (print {
+                    type: "process-refund",
+                    refund-id: refund-id,
+                    btc-tx-refund-id: result,
+                    done: true})
+                  (ok true))
+                ERR_TX_VALUE_TOO_SMALL)
+              ERR_TX_NOT_SENT_TO_POOL))
+      error (err (* error u1000)))))
+
+;; Read only functions
 (define-read-only (get-refund-request (refund-id uint))
   (match (map-get? refund-requests refund-id)
     refund (ok refund)
