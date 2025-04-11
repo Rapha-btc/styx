@@ -23,7 +23,7 @@
 (define-constant ERR_FEE_TOO_LARGE (err u139))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
-(define-constant OPERATOR_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
+(define-constant OPERATOR_STYX 'SP16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8RKWAKS) ;; in beta 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE 
 (define-constant COOLDOWN u6) 
 (define-constant MIN_SATS u10000) 
 (define-constant FIXED_FEE u21000)
@@ -229,6 +229,64 @@
            (ok { scriptPubKey: scriptPubKey, value: value }))
       missing ERR-TRANSACTION)))
 
+(define-read-only (parse-payload-legacy (tx (buff 4096)))
+  (match (get-output-legacy tx u0)
+    parsed-result
+    (let
+      (
+        (script (get scriptPubKey parsed-result))
+        (script-len (len script))
+        ;; lenght is dynamic one or two bytes!
+        (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
+        (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
+      )
+      (asserts! (> (len payload) u2) ERR-ELEMENT-EXPECTED)
+      (ok (from-consensus-buff? { p: principal } payload))
+    )
+    not-found ERR-ELEMENT-EXPECTED
+  )
+)
+
+(define-read-only (parse-payload-legacy-refund (tx (buff 4096)))
+  (match (get-output-legacy tx u0)
+    parsed-result
+    (let
+      (
+        (script (get scriptPubKey parsed-result))
+        (script-len (len script))
+        ;; lenght is dynamic one or two bytes!
+        (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4C) u3 u2)) 
+        (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
+      )
+      (asserts! (> (len payload) u2) ERR-ELEMENT-EXPECTED)
+      (ok (from-consensus-buff? { i: uint } payload))
+    )
+    not-found ERR-ELEMENT-EXPECTED
+  )
+)
+
+(define-read-only (get-output-legacy (tx (buff 4096)) (index uint))
+  (let
+    (
+      (parsed-tx (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 parse-tx tx))
+    )
+    (match parsed-tx
+      result
+      (let
+        (
+          (tx-data (unwrap-panic parsed-tx))
+          (outs (get outs tx-data))
+          (out (unwrap! (element-at? outs index) ERR-ELEMENT-EXPECTED))
+          (scriptPubKey (get scriptPubKey out))
+          (value (get value out)) 
+        )
+          (ok { scriptPubKey: scriptPubKey, value: value })
+      )
+      missing ERR-ELEMENT-EXPECTED
+    )
+  )
+)
+
 ;; Process a BTC deposit and release sBTC - by anyone
 (define-public (process-btc-deposit
     (height uint) 
@@ -271,7 +329,7 @@
               (let ((btc-amount (get value out))
                     (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                     (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                    (this-fee   (if (< btc-amount (get fee-threshold current-pool))
+                    (this-fee (if (< btc-amount (get fee-threshold current-pool))
                                     (/ fixed-fee u2)
                                     fixed-fee))
                     (sbtc-amount-to-user (- btc-amount this-fee))
@@ -287,14 +345,14 @@
                        processed-at: burn-block-height,
                        tx-number: current-count})  
                     (var-set processed-tx-count (+ current-count u1))
-                   (var-set pool 
+                    (var-set pool 
                      (merge current-pool 
                        { available-sbtc: (- available-sbtc btc-amount) }))  
-                   (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                              transfer this-fee tx-sender FEE-RECEIVER none)))
-                   (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                              transfer sbtc-amount-to-user tx-sender stx-receiver none)))
-                   (print {
+                    (print {
                      type: "process-btc-deposit",
                      btc-tx-id: result,
                      btc-amount: btc-amount,
@@ -304,9 +362,74 @@
                      when: burn-block-height,
                      processor: tx-sender})
                    (ok true))
-            ERR_TX_VALUE_TOO_SMALL)
-            ERR_TX_NOT_SENT_TO_POOL))
+                ERR_TX_VALUE_TOO_SMALL)
+              ERR_TX_NOT_SENT_TO_POOL))
       error (err (* error u1000)))))
+
+(define-public (process-btc-deposit-legacy
+    (height uint)
+    (blockheader (buff 80))
+    (tx {version: (buff 4),
+      ins: (list 8
+        {outpoint: {hash: (buff 32), index: (buff 4)}, scriptSig: (buff 256), sequence: (buff 4)}),
+      outs: (list 8
+        {value: (buff 8), scriptPubKey: (buff 128)}),
+      locktime: (buff 4)})
+    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint }))
+  (let ((current-pool (var-get pool))
+        (fixed-fee (get fee current-pool))
+        (btc-receiver (get btc-receiver current-pool))
+        (tx-buff (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-helper concat-tx tx)))
+      (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN)) ERR_IN_COOLDOWN)
+      (match (contract-call? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v5 was-tx-mined-compact
+                height 
+                tx-buff 
+                blockheader 
+                proof)
+        result
+          (begin
+            (asserts! (is-none (map-get? processed-btc-txs result)) ERR_BTC_TX_ALREADY_USED)
+            (match (get out (unwrap! (get-out-value tx btc-receiver) ERR_NATIVE_FAILURE))
+              out (if (>= (get value out) MIN_SATS)
+                (let ((btc-amount (get value out))
+                      (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
+                      (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+                      (this-fee (if (< btc-amount (get fee-threshold current-pool))
+                                    (/ fixed-fee u2)
+                                    fixed-fee))
+                      (sbtc-amount-to-user (- btc-amount this-fee))
+                      (available-sbtc (get available-sbtc current-pool))
+                      (current-count (var-get processed-tx-count))
+                      (max-deposit (get max-deposit current-pool)))
+                     (asserts! (<= btc-amount available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
+                     (asserts! (<= btc-amount max-deposit) ERR_DEPOSIT_TOO_LARGE)
+                     (map-set processed-btc-txs result 
+                        { btc-amount: btc-amount,
+                        sbtc-amount: sbtc-amount-to-user,
+                        stx-receiver: stx-receiver,
+                        processed-at: burn-block-height,
+                        tx-number: current-count})  
+                     (var-set processed-tx-count (+ current-count u1))
+                     (var-set pool 
+                        (merge current-pool 
+                        { available-sbtc: (- available-sbtc btc-amount) }))  
+                     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                             transfer this-fee tx-sender FEE-RECEIVER none)))
+                     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                             transfer sbtc-amount-to-user tx-sender stx-receiver none)))
+                     (print {
+                        type: "process-btc-deposit",
+                        btc-tx-id: result,
+                        btc-amount: btc-amount,
+                        sbtc-amount-to-user: sbtc-amount-to-user,
+                        stx-receiver: stx-receiver,
+                        btc-receiver: btc-receiver,
+                        when: burn-block-height,
+                        processor: tx-sender})
+                     (ok true))
+                  ERR_TX_VALUE_TOO_SMALL)
+                ERR_TX_NOT_SENT_TO_POOL))
+        error (err (* error u1000)))))
 
 ;; ---- Read-only functions ----
 (define-read-only (get-pool)
