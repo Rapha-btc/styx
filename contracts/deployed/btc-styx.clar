@@ -145,6 +145,31 @@
         (ok true))
       error (err (* error u1000)))))
 
+(define-public (add-only-liquidity (sbtc-amount uint)) ;; this func without cool downs only adds liquidity - reserved
+  (let ((current-pool (var-get pool))
+        (new-total (+ (get total-sbtc current-pool) sbtc-amount))
+        (new-available (+ (get available-sbtc current-pool) sbtc-amount)))
+    (asserts! (is-eq tx-sender OPERATOR_STYX) ERR_FORBIDDEN)
+    (asserts! (> sbtc-amount u0) ERR_AMOUNT_NULL)
+    (match (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                transfer sbtc-amount tx-sender (as-contract tx-sender) none)
+      success 
+      (begin
+        (var-set pool (merge current-pool 
+                  {
+                    total-sbtc: new-total,
+                    available-sbtc: new-available,
+                  }))
+        (print {
+          type: "add-liquidity",
+          operator: tx-sender,
+          sbtc: sbtc-amount,
+          total-sbtc: new-total,
+          available-sbtc: new-available,
+        })
+        (ok true))
+      error (err (* error u1000)))))
+
 (define-public (set-params (new-max-deposit uint) (fee uint) (fee-threshold uint))
   (let ((current-pool (var-get pool))
         (signaled-at (default-to u0 (get set-param-signaled-at current-pool))))
