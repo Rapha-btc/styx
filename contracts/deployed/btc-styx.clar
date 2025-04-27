@@ -358,7 +358,7 @@
               (let ((btc-amount (get value out))
                     (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                     (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                    (this-fee (if (< btc-amount (get fee-threshold current-pool))
+                    (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                                     (/ fixed-fee u2)
                                     fixed-fee))
                     (sbtc-amount-to-user (- btc-amount this-fee))
@@ -377,8 +377,6 @@
                     (var-set pool 
                      (merge current-pool 
                        { available-sbtc: (- available-sbtc btc-amount) }))  
-                    ;; (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                    ;;          transfer this-fee tx-sender FEE-RECEIVER none)))
                     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                              transfer sbtc-amount-to-user tx-sender stx-receiver none)))
                     (print {
@@ -423,7 +421,7 @@
                 (let ((btc-amount (get value out))
                       (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
                       (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                      (this-fee (if (< btc-amount (get fee-threshold current-pool))
+                      (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                                     (/ fixed-fee u2)
                                     fixed-fee))
                       (sbtc-amount-to-user (- btc-amount this-fee))
@@ -442,8 +440,6 @@
                      (var-set pool 
                         (merge current-pool 
                         { available-sbtc: (- available-sbtc btc-amount) }))  
-                    ;;  (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                    ;;          transfer this-fee tx-sender FEE-RECEIVER none)))
                      (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                              transfer sbtc-amount-to-user tx-sender stx-receiver none)))
                      (print {
