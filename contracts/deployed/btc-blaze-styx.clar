@@ -145,7 +145,7 @@
         (ok true))
       error (err (* error u1000)))))
 
-(define-public (add-only-liquidity (sbtc-amount uint)) 
+(define-public (add-only-liquidity (sbtc-amount uint)) ;; this func without cool downs only adds liquidity - reserved
   (let ((current-pool (var-get pool))
         (new-total (+ (get total-sbtc current-pool) sbtc-amount))
         (new-available (+ (get available-sbtc current-pool) sbtc-amount)))
@@ -159,7 +159,6 @@
                   {
                     total-sbtc: new-total,
                     available-sbtc: new-available,
-                    last-updated: burn-block-height,
                   }))
         (print {
           type: "add-liquidity",
@@ -167,7 +166,6 @@
           sbtc: sbtc-amount,
           total-sbtc: new-total,
           available-sbtc: new-available,
-          last-updated: burn-block-height,
         })
         (ok true))
       error (err (* error u1000)))))
@@ -379,8 +377,11 @@
                        { available-sbtc: (- available-sbtc btc-amount) }))  
                     ;; (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                     ;;          transfer this-fee tx-sender FEE-RECEIVER none)))
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                             transfer sbtc-amount-to-user tx-sender stx-receiver none)))
+                    ;; (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                    ;;          transfer sbtc-amount-to-user tx-sender stx-receiver none)))
+                    ;; Call deposit function on the Blaze subnet contract instead of transferring sBTC directly
+                    (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
+                                            sbtc-amount-to-user (some stx-receiver))))
                     (print {
                      type: "process-btc-deposit",
                      btc-tx-id: result,
@@ -444,8 +445,10 @@
                         { available-sbtc: (- available-sbtc btc-amount) }))  
                     ;;  (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
                     ;;          transfer this-fee tx-sender FEE-RECEIVER none)))
-                     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
-                             transfer sbtc-amount-to-user tx-sender stx-receiver none)))
+                    ;;  (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                    ;;          transfer sbtc-amount-to-user tx-sender stx-receiver none)))
+                     (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
+                                            sbtc-amount-to-user (some stx-receiver))))
                      (print {
                         type: "process-btc-deposit",
                         btc-tx-id: result,
