@@ -1,4 +1,4 @@
-;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.bitcoin-styx
+;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.btc-styx
 
 ;; Styx v1. Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to Stacks. No Charon needed on this river

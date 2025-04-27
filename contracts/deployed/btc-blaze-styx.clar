@@ -1,7 +1,7 @@
-;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.bitcoin-styx
+;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.btc-blaze
 
 ;; Styx v1. Pool structure to track sBTC liquidity (single pool per contract)
-;; Trustless one-way bridge from Bitcoin to Stacks. No Charon needed on this river
+;; Trustless one-way bridge from Bitcoin to Blaze Stacks Subnet. No Charon needed on this river
 ;; just ultra-fast passage via Clarity's direct Bitcoin state reading. 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
