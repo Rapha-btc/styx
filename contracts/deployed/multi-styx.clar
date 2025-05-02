@@ -1,6 +1,7 @@
 ;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.styx
 
 ;; Styx v2 Pool structure to track sBTC liquidity (single pool per contract)
+;; WARNING: 1 pool : 1 btc address -> else introduces double spending
 ;; Trustless one-way bridge from Bitcoin to Stacks. 
 ;; No Charon needed on this river
 ;; just ultra-fast passage via Clarity's direct Bitcoin state reading. 
