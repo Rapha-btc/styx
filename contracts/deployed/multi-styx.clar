@@ -55,7 +55,7 @@
     withdrawal-signaled-at: none,
     max-deposit: u1000000,
     fee: u6000,
-    fee-threshold: u200000,
+    fee-threshold: u203000,
     add-liq-signaled-at: none,
     set-param-signaled-at: none})
 
