@@ -1,4 +1,4 @@
-;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.btc-blaze
+;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.styx
 
 ;; Styx v2 Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to Stacks and Blaze Stacks Subnet. 
@@ -26,6 +26,7 @@
 (define-constant ERR_FEE_TOO_LARGE (err u139))
 
 (define-constant FEE-RECEIVER 'SMHAVPYZ8BVD0BHBBQGY5AQVVGNQY4TNHAKGPYP)
+(define-constant FEE-RATE u50)
 (define-constant OPERATOR_STYX 'SP16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8RKWAKS) ;; in beta 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE 
 (define-constant COOLDOWN u6) 
 (define-constant MIN_SATS u10000) 
@@ -146,7 +147,7 @@
         (ok true))
       error (err (* error u1000)))))
 
-(define-public (add-only-liquidity (sbtc-amount uint)) ;; this func without cool downs only adds liquidity - reserved
+(define-public (add-only-liquidity (sbtc-amount uint))
   (let ((current-pool (var-get pool))
         (new-total (+ (get total-sbtc current-pool) sbtc-amount))
         (new-available (+ (get available-sbtc current-pool) sbtc-amount)))
@@ -160,6 +161,7 @@
                   {
                     total-sbtc: new-total,
                     available-sbtc: new-available,
+                    last-updated: burn-block-height,
                   }))
         (print {
           type: "add-liquidity",
@@ -167,6 +169,7 @@
           sbtc: sbtc-amount,
           total-sbtc: new-total,
           available-sbtc: new-available,
+          last-updated: burn-block-height,
         })
         (ok true))
       error (err (* error u1000)))))
@@ -332,8 +335,7 @@
     (witness-merkle-root (buff 32)) 
     (witness-reserved-value (buff 32)) 
     (ctx (buff 1024)) 
-    (cproof (list 14 (buff 32)))
-    (is-blaze bool)) 
+    (cproof (list 14 (buff 32)))) 
   (let ((current-pool (var-get pool))
         (fixed-fee (get fee current-pool))
         (btc-receiver (get btc-receiver current-pool))
@@ -361,6 +363,7 @@
                     (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                                     (/ fixed-fee u2)
                                     fixed-fee))
+                    (styx-fee (/ (* this-fee FEE-RATE) u100))
                     (sbtc-amount-to-user (- btc-amount this-fee))
                     (available-sbtc (get available-sbtc current-pool))
                     (current-count (var-get processed-tx-count))
@@ -377,14 +380,12 @@
                     (var-set pool 
                      (merge current-pool 
                        { available-sbtc: (- available-sbtc btc-amount) }))
-                    (if is-blaze
-                      (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
-                                              sbtc-amount-to-user (some stx-receiver))))
-                      (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                              sbtc-amount-to-user tx-sender stx-receiver none))))
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                              sbtc-amount-to-user tx-sender stx-receiver none)))
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                              styx-fee tx-sender FEE-RECEIVER none)))
                     (print {
                      type: "process-btc-deposit",
-                     is-blaze: is-blaze,
                      btc-tx-id: result,
                      btc-amount: btc-amount,
                      sbtc-amount-to-user: sbtc-amount-to-user,
@@ -406,8 +407,7 @@
       outs: (list 8
         {value: (buff 8), scriptPubKey: (buff 128)}),
       locktime: (buff 4)})
-    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint })
-    (is-blaze bool))
+    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint }))
   (let ((current-pool (var-get pool))
         (fixed-fee (get fee current-pool))
         (btc-receiver (get btc-receiver current-pool))
@@ -429,6 +429,7 @@
                       (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                                     (/ fixed-fee u2)
                                     fixed-fee))
+                      (styx-fee (/ (* this-fee FEE-RATE) u100))
                       (sbtc-amount-to-user (- btc-amount this-fee))
                       (available-sbtc (get available-sbtc current-pool))
                       (current-count (var-get processed-tx-count))
@@ -445,11 +446,10 @@
                      (var-set pool 
                         (merge current-pool 
                         { available-sbtc: (- available-sbtc btc-amount) }))  
-                     (if is-blaze
-                        (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
-                                              sbtc-amount-to-user (some stx-receiver))))
-                        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                              sbtc-amount-to-user tx-sender stx-receiver none))))
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                              sbtc-amount-to-user tx-sender stx-receiver none)))
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                              styx-fee tx-sender FEE-RECEIVER none)))
                      (print {
                         type: "process-btc-deposit",
                         btc-tx-id: result,

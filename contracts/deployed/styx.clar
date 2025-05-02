@@ -1,8 +1,5 @@
-;; SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.btc-blaze
-
-;; Styx v2 Pool structure to track sBTC liquidity (single pool per contract)
-;; Trustless one-way bridge from Bitcoin to Stacks and Blaze Stacks Subnet. 
-;; No Charon needed on this river
+;; Styx v1. Pool structure to track sBTC liquidity (single pool per contract)
+;; Trustless one-way bridge from Bitcoin to Stacks. No Charon needed on this river
 ;; just ultra-fast passage via Clarity's direct Bitcoin state reading. 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
@@ -146,7 +143,7 @@
         (ok true))
       error (err (* error u1000)))))
 
-(define-public (add-only-liquidity (sbtc-amount uint)) ;; this func without cool downs only adds liquidity - reserved
+(define-public (add-only-liquidity (sbtc-amount uint)) 
   (let ((current-pool (var-get pool))
         (new-total (+ (get total-sbtc current-pool) sbtc-amount))
         (new-available (+ (get available-sbtc current-pool) sbtc-amount)))
@@ -160,6 +157,7 @@
                   {
                     total-sbtc: new-total,
                     available-sbtc: new-available,
+                    last-updated: burn-block-height,
                   }))
         (print {
           type: "add-liquidity",
@@ -167,6 +165,7 @@
           sbtc: sbtc-amount,
           total-sbtc: new-total,
           available-sbtc: new-available,
+          last-updated: burn-block-height,
         })
         (ok true))
       error (err (* error u1000)))))
@@ -332,8 +331,7 @@
     (witness-merkle-root (buff 32)) 
     (witness-reserved-value (buff 32)) 
     (ctx (buff 1024)) 
-    (cproof (list 14 (buff 32)))
-    (is-blaze bool)) 
+    (cproof (list 14 (buff 32)))) 
   (let ((current-pool (var-get pool))
         (fixed-fee (get fee current-pool))
         (btc-receiver (get btc-receiver current-pool))
@@ -376,15 +374,11 @@
                     (var-set processed-tx-count (+ current-count u1))
                     (var-set pool 
                      (merge current-pool 
-                       { available-sbtc: (- available-sbtc btc-amount) }))
-                    (if is-blaze
-                      (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
-                                              sbtc-amount-to-user (some stx-receiver))))
-                      (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                              sbtc-amount-to-user tx-sender stx-receiver none))))
+                       { available-sbtc: (- available-sbtc btc-amount) }))  
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                             transfer sbtc-amount-to-user tx-sender stx-receiver none)))
                     (print {
                      type: "process-btc-deposit",
-                     is-blaze: is-blaze,
                      btc-tx-id: result,
                      btc-amount: btc-amount,
                      sbtc-amount-to-user: sbtc-amount-to-user,
@@ -406,8 +400,7 @@
       outs: (list 8
         {value: (buff 8), scriptPubKey: (buff 128)}),
       locktime: (buff 4)})
-    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint })
-    (is-blaze bool))
+    (proof { tx-index: uint, hashes: (list 12 (buff 32)), tree-depth: uint }))
   (let ((current-pool (var-get pool))
         (fixed-fee (get fee current-pool))
         (btc-receiver (get btc-receiver current-pool))
@@ -445,11 +438,8 @@
                      (var-set pool 
                         (merge current-pool 
                         { available-sbtc: (- available-sbtc btc-amount) }))  
-                     (if is-blaze
-                        (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
-                                              sbtc-amount-to-user (some stx-receiver))))
-                        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                              sbtc-amount-to-user tx-sender stx-receiver none))))
+                     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
+                             transfer sbtc-amount-to-user tx-sender stx-receiver none)))
                      (print {
                         type: "process-btc-deposit",
                         btc-tx-id: result,
