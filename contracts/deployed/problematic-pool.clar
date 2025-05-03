@@ -363,8 +363,8 @@
                     (available-sbtc (get available-sbtc current-pool))
                     (current-count (var-get processed-tx-count))
                     (max-deposit (get max-deposit current-pool))) 
-                   (asserts! (<= btc-amount available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
-                   (asserts! (<= btc-amount max-deposit) ERR_DEPOSIT_TOO_LARGE)
+                   (asserts! (<= sbtc-amount-to-user available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
+                   (asserts! (<= sbtc-amount-to-user max-deposit) ERR_DEPOSIT_TOO_LARGE)
                    (map-set processed-btc-txs result 
                      { btc-amount: btc-amount,
                        sbtc-amount: sbtc-amount-to-user,
@@ -374,7 +374,7 @@
                     (var-set processed-tx-count (+ current-count u1))
                     (var-set pool 
                      (merge current-pool 
-                       { available-sbtc: (- available-sbtc btc-amount) }))
+                       { available-sbtc: (- available-sbtc sbtc-amount-to-user) }))
                     (if is-blaze
                       (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
                                               sbtc-amount-to-user (some stx-receiver))))
@@ -431,8 +431,8 @@
                       (available-sbtc (get available-sbtc current-pool))
                       (current-count (var-get processed-tx-count))
                       (max-deposit (get max-deposit current-pool)))
-                     (asserts! (<= btc-amount available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
-                     (asserts! (<= btc-amount max-deposit) ERR_DEPOSIT_TOO_LARGE)
+                     (asserts! (<= sbtc-amount-to-user available-sbtc) ERR_INSUFFICIENT_POOL_BALANCE)
+                     (asserts! (<= sbtc-amount-to-user max-deposit) ERR_DEPOSIT_TOO_LARGE)
                      (map-set processed-btc-txs result 
                         { btc-amount: btc-amount,
                         sbtc-amount: sbtc-amount-to-user,
@@ -442,7 +442,7 @@
                      (var-set processed-tx-count (+ current-count u1))
                      (var-set pool 
                         (merge current-pool 
-                        { available-sbtc: (- available-sbtc btc-amount) }))  
+                        { available-sbtc: (- available-sbtc sbtc-amount-to-user) }))  
                      (if is-blaze
                         (try! (as-contract (contract-call? 'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-token-subnet-v1 deposit 
                                               sbtc-amount-to-user (some stx-receiver))))
