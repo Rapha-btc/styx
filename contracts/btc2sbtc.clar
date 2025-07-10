@@ -29,7 +29,6 @@
 (define-constant ERR_TOO_MUCH_SLIPPAGE (err u140))
 (define-constant ERR-WRONG-DEX (err u141))
 (define-constant ERR-WRONG-AI-ACCOUNT (err u142))
-(define-constant ERR-DEX-NOT-ALLOWED (err u143))
 
 (define-constant ERR_NOT_APPROVER (err u143))
 (define-constant ERR_PROPOSAL_EXPIRED (err u144))
@@ -37,6 +36,7 @@
 (define-constant ERR_ALREADY_SIGNALED (err u146))
 (define-constant ERR_INSUFFICIENT_SIGNALS (err u147))
 (define-constant ERR_PROPOSAL_EXECUTED (err u148))
+(define-constant ERR-DEX-NOT-ALLOWED (err u149))
 
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
@@ -197,8 +197,16 @@
   )
 )
 
-(define-read-only (is-dex-allowed (ft-contract principal))
+(define-read-only (get-dex-allowed (ft-contract principal))
   (map-get? allowed-dex-pairs ft-contract)
+)
+
+(define-read-only (get-allowlist-proposal (proposal-id uint))
+  (map-get? allowlist-proposals proposal-id)
+)
+
+(define-read-only (has-signaled (proposal-id uint) (approver principal))
+  (default-to false (map-get? proposal-signals { proposal-id: proposal-id, approver: approver }))
 )
 
 ;; ---- Helper functions ----
@@ -944,7 +952,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
                 (tokens-out (get tokens-out in-info))
-                (ai-dex-allowed (unwrap! (is-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
+                (ai-dex-allowed (unwrap! (get-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
                 (ai-config (contract-call? ai-account get-configuration))
                 (ai-owner (get owner ai-config))
               )
@@ -1080,7 +1088,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
                 (tokens-out (get tokens-out in-info))
-                (ai-dex-allowed (unwrap! (is-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED)
+                (ai-dex-allowed (unwrap! (get-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
                 (ai-config (contract-call? ai-account get-configuration))
                 (ai-owner (get owner ai-config))
               )
