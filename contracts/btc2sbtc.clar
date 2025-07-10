@@ -829,6 +829,7 @@
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
+                (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
                 (tokens-out (get tokens-out in-info))
                 (ai-dex-allowed (get the dex from contract allowed map)) ;; this needs to be done
                 (ai-config (contract-call? ai-account get-configuration))
