@@ -29,6 +29,17 @@
 (define-constant ERR_TOO_MUCH_SLIPPAGE (err u140))
 (define-constant ERR-WRONG-DEX (err u141))
 (define-constant ERR-WRONG-AI-ACCOUNT (err u142))
+(define-constant ERR-DEX-NOT-ALLOWED (err u143))
+
+(define-constant ERR_NOT_APPROVER (err u143))
+(define-constant ERR_PROPOSAL_EXPIRED (err u144))
+(define-constant ERR_PROPOSAL_NOT_FOUND (err u145))
+(define-constant ERR_ALREADY_SIGNALED (err u146))
+(define-constant ERR_INSUFFICIENT_SIGNALS (err u147))
+(define-constant ERR_PROPOSAL_EXECUTED (err u148))
+
+(define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
+(define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
 
 (define-constant OPERATOR_STYX 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ) 
 (define-constant COOLDOWN u6)
@@ -80,6 +91,115 @@
 )
 
 (define-data-var is-initialized bool false)
+
+(define-data-var next-proposal-id uint u1)
+
+;; ---- Allow list mechanism ----
+;;
+(define-read-only (is-approver (who principal))
+  (or 
+    (is-eq who 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ)  ;; Approver 1
+    (is-eq who 'SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW)      ;; Approver 2  
+    (is-eq who 'SP3PEBWZ8PQK1M82MS4DVD3V9DE9ZS6F25S6PEF0R)      ;; Approver 3
+    (is-eq who 'SPP3HM2E4JXGT26G1QRWQ2YTR5WT040S5NKXZYFC)      ;; Approver 4
+    (is-eq who 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22)      ;; Approver 5
+  )
+)
+
+(define-map allowlist-proposals
+  uint
+  {
+    ft-contract: principal,
+    dex-contract: principal,
+    proposed-at: uint,
+    signals: uint,
+    executed: bool
+  }
+)
+
+(define-map proposal-signals
+  { proposal-id: uint, approver: principal }
+  bool
+)
+
+(define-map allowed-dex-pairs principal principal) ;; ft -> dex
+
+
+(define-public (propose-allowlist-pair (ft-contract principal) (dex-contract principal))
+  (let ((proposal-id (var-get next-proposal-id)))
+    (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
+    
+    (map-set allowlist-proposals proposal-id { 
+      ft-contract: ft-contract,
+      dex-contract: dex-contract,
+      proposed-at: burn-block-height,
+      signals: u1,
+      executed: false
+    })
+    
+    (map-set proposal-signals { proposal-id: proposal-id, approver: tx-sender } true)
+    (var-set next-proposal-id (+ proposal-id u1))
+    
+    (print {
+      type: "allowlist-proposal",
+      proposal-id: proposal-id,
+      ft-contract: ft-contract,
+      dex-contract: dex-contract,
+      proposer: tx-sender
+    })
+    
+    (ok proposal-id)
+  )
+)
+
+(define-public (signal-allowlist-approval (proposal-id uint))
+  (let (
+    (proposal (unwrap! (map-get? allowlist-proposals proposal-id) ERR_PROPOSAL_NOT_FOUND))
+    (current-signals (get signals proposal))
+  )
+    (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
+    (asserts! (not (get executed proposal)) ERR_PROPOSAL_EXECUTED)
+    (asserts! (<= burn-block-height (+ (get proposed-at proposal) APPROVAL_WINDOW)) ERR_PROPOSAL_EXPIRED)
+    (asserts! (is-none (map-get? proposal-signals { proposal-id: proposal-id, approver: tx-sender })) ERR_ALREADY_SIGNALED)
+    
+    (let ((new-signals (+ current-signals u1)))
+      (map-set proposal-signals { proposal-id: proposal-id, approver: tx-sender } true)
+      (map-set allowlist-proposals proposal-id
+        (merge proposal { signals: new-signals })
+      )
+      
+      ;; Auto-execute if we have enough signals
+      (if (>= new-signals SIGNALS_REQUIRED)
+        (begin
+          (map-set allowed-dex-pairs (get ft-contract proposal) (get dex-contract proposal))
+          (map-set allowlist-proposals proposal-id
+            (merge proposal { executed: true })
+          )
+          (print {
+            type: "allowlist-approved",
+            proposal-id: proposal-id,
+            ft-contract: (get ft-contract proposal),
+            dex-contract: (get dex-contract proposal),
+            signals: new-signals
+          })
+        )
+        (print {
+          type: "allowlist-signal",
+          proposal-id: proposal-id,
+          ft-contract: (get ft-contract proposal),
+          dex-contract: (get dex-contract proposal),
+          signals: new-signals
+        })
+      )
+      
+      (ok new-signals)
+    )
+  )
+)
+
+(define-read-only (is-dex-allowed (ft-contract principal))
+  (map-get? allowed-dex-pairs ft-contract)
+)
 
 ;; ---- Helper functions ----
 (define-read-only (read-uint64 (ctx {
@@ -824,7 +944,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
                 (tokens-out (get tokens-out in-info))
-                (ai-dex-allowed (get the dex from contract allowed map)) ;; this needs to be done
+                (ai-dex-allowed (unwrap! (is-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
                 (ai-config (contract-call? ai-account get-configuration))
                 (ai-owner (get owner ai-config))
               )
@@ -960,7 +1080,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
                 (tokens-out (get tokens-out in-info))
-                (ai-dex-allowed (get the dex from contract allowed map))
+                (ai-dex-allowed (unwrap! (is-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED)
                 (ai-config (contract-call? ai-account get-configuration))
                 (ai-owner (get owner ai-config))
               )
