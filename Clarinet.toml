@@ -5,6 +5,11 @@ authors = []
 telemetry = false
 cache_dir = './.cache'
 requirements = []
+[contracts.btc2sbtc]
+path = 'contracts/btc2sbtc.clar'
+clarity_version = 3
+epoch = 3.1
+
 [contracts.styx]
 path = 'contracts/styx.clar'
 clarity_version = 2
@@ -17,3 +22,7 @@ strict = false
 trusted_sender = false
 trusted_caller = false
 callee_filter = false
+
+[repl.remote_data]
+enabled = false
+api_url = 'https://api.hiro.so'
