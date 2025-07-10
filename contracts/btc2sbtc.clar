@@ -51,7 +51,6 @@
   last-updated: uint,
   withdrawal-signaled-at: (optional uint),
   max-deposit: uint,
-  max-slippage-rate: uint,
   fee: uint,
   fee-threshold: uint,
   add-liq-signaled-at: (optional uint),
@@ -63,7 +62,6 @@
   last-updated: u0,
   withdrawal-signaled-at: none,
   max-deposit: u1000000,
-  max-slippage-rate: u69000,
   fee: u6000,
   fee-threshold: u203000,
   add-liq-signaled-at: none,
@@ -281,7 +279,6 @@
     (new-max-deposit uint)
     (fee uint)
     (fee-threshold uint)
-    (new-max-slippage-rate uint)
   )
   (let (
       (current-pool (var-get pool))
@@ -292,12 +289,10 @@
     (asserts! (<= fee FIXED_FEE) ERR_FEE_TOO_LARGE)
     (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
     (asserts! (> new-max-deposit MIN_SATS) ERR_AMOUNT_NULL)
-    (asserts! (< new-max-slippage-rate MAX_SLIPPAGE) ERR_TOO_MUCH_SLIPPAGE)
     (var-set pool
       (merge current-pool {
         last-updated: burn-block-height,
         max-deposit: new-max-deposit,
-        max-slippage-rate: new-max-slippage-rate,
         fee: fee,
         fee-threshold: fee-threshold,
         set-param-signaled-at: none,
@@ -306,7 +301,6 @@
     (print {
       type: "set-max-deposit",
       max-deposit: new-max-deposit,
-      max-slippage-rate: new-max-slippage-rate,
       fee: fee,
       fee-threshold: fee-threshold,
       set-param-signaled-at: none,
@@ -795,7 +789,6 @@
   (let (
       (current-pool (var-get pool))
       (fixed-fee (get fee current-pool))
-      (max-slip-rate (get max-slippage-rate current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
         'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2
@@ -933,7 +926,6 @@
   (let (
       (current-pool (var-get pool))
       (fixed-fee (get fee current-pool))
-      (max-slip-rate (get max-slippage-rate current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
         'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
