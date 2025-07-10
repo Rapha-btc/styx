@@ -866,7 +866,7 @@
                 is-ai-account: is-ai-account,
                 min-amount-out: min-amount-out
               })
-              (if (>= min-amount-out tokens-out)
+              (if (>= tokens-out min-amount-out)
                     (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
                         result (begin 
                             (if is-ai-account
@@ -1003,7 +1003,7 @@
                 is-ai-account: is-ai-account,
                 min-amount-out: min-amount-out
               })
-              (if (>= min-amount-out tokens-out)
+              (if (>= tokens-out min-amount-out)
                     (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
                         result (begin 
                             (if is-ai-account
