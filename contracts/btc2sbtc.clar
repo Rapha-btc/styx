@@ -536,7 +536,7 @@
         ))
         (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
       )
-      (ok (from-consensus-buff? { p: principal, amount: uint } payload))
+      (ok (from-consensus-buff? { p: principal, amount: uint, dex: principal } payload))
     )
     not-found
     ERR-ELEMENT-EXPECTED
@@ -619,7 +619,7 @@
         (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
       )
       (asserts! (> (len payload) u2) ERR-ELEMENT-EXPECTED)
-      (ok (from-consensus-buff? { p: principal, amount: uint } payload))
+      (ok (from-consensus-buff? { p: principal, amount: uint, dex: principal } payload))
     )
     not-found
     ERR-ELEMENT-EXPECTED
@@ -960,6 +960,7 @@
                 (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                 (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
                 (min-amount-out (unwrap! (get amount payload) ERR-ELEMENT-EXPECTED))
+                (dex-extracted (unwrap! (get dex payload) ERR-ELEMENT-EXPECTED))
                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                   (/ fixed-fee u2)
                   fixed-fee
@@ -976,6 +977,7 @@
               )
               (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
               (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
+              (asserts! (is-eq dex-extracted ai-dex-allowed) ERR-WRONG-DEX)
               (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
@@ -1097,6 +1099,7 @@
                 (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
                 (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
                 (min-amount-out (unwrap! (get amount payload) ERR-ELEMENT-EXPECTED))
+                (dex-extracted (unwrap! (get dex payload) ERR-ELEMENT-EXPECTED))
                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                   (/ fixed-fee u2)
                   fixed-fee
@@ -1113,6 +1116,7 @@
               )
               (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
               (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
+              (asserts! (is-eq dex-extracted ai-dex-allowed) ERR-WRONG-DEX)
               (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
