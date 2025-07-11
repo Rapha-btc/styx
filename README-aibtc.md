@@ -1,156 +1,165 @@
-# Styx v1 Changes Summary: Mainnet → AI BTC Allowlist Version
+# BTC2sBTC AI BTC Bridge Contract
 
 ## Overview
 
-The core Bitcoin processing logic remains **unchanged** from the battle-tested mainnet code. All changes are **additive** and focused on:
+The BTC2sBTC contract provides a trustless bridge from Bitcoin to AI BTC tokens on the Stacks ecosystem. This enhanced version includes specialized functionality for AI BTC DAO use cases, with both direct sBTC deposits and automatic swapping to AI BTC tokens.
 
-1. **AI BTC Integration** - Support for AI-managed accounts
-2. **Allowlist Governance** - Decentralized multi-sig approval for token pairs
-3. **Enhanced Flexibility** - Support for multiple swap destinations
+## Key Features
 
----
+- **Direct BTC to sBTC deposits** with AI account verification
+- **BTC to AI BTC token swaps** via allowlisted DEX pairs
+- **Governance-controlled allowlist** for FT/DEX pairs (3-of-5 multisig)
+- **Emergency controls** for security
+- **Pool management** with operator controls
+- **Refund mechanisms** for failed transactions
 
-## 🔄 **Core Changes Summary**
+## Main Changes from Original BTC2sBTC Contract
 
-The mainnet version used **hardcoded contract calls** to specific USDA/PEPE pools. The AI BTC version introduces a **flexible trait-based system** with governance for token/DEX pairs and AI account validation.
+### 1. AI Account Integration
 
-### 1. **NEW: Multi-sig Allowlist System** (Lines 84-217)
+- All deposit/swap functions now require AI account verification
+- Payloads must contain the AI account owner's principal
+- Added `ai-account` trait parameter to processing functions
+- Frontend enforces AI account ownership before allowing deposits
 
-**Purpose**: Decentralized governance for approving token/DEX pairs instead of hardcoded contracts
+### 2. Enhanced Swap Functionality
 
-```clarity
-;; 5 immutable approvers with 3-of-5 consensus
-(define-read-only (is-approver (who principal))
-  (or
-    (is-eq who 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ)  ;; Approver 1
-    (is-eq who 'SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW)  ;; Approver 2
-    ;; ... 3 more approvers
-  )
-)
-```
+- New `swap-btc-to-aibtc` and `swap-btc-to-aibtc-legacy` functions
+- Automatic DEX integration for BTC → AI BTC token conversion
+- Slippage protection with `min-amount-out` parameter
+- Fallback to direct sBTC transfer if swap fails or insufficient output
 
-**Security**:
+### 3. Governance & Security Controls
 
-- ✅ Immutable approver set (no single point of failure)
-- ✅ Time-limited proposals (7 days)
-- ✅ 3-of-5 consensus required
-- ✅ Auto-execution when threshold reached
+#### Allowlist Management
 
-### 2. **MODIFIED: Swap Functions Architecture** (Lines 720-890)
+- **3-of-5 multisig approval** for adding FT/DEX pairs
+- **Single approver removal** for emergency cleanup
+- **7-day approval window** with auto-execution at 3 signals
 
-**Purpose**: Replace hardcoded contract calls with dynamic trait-based system + AI validation
+#### Emergency Controls
 
-#### Before (Mainnet):
+- **One-way emergency stop** - any approver can permanently pause swaps
+- **Immediate removal** of malicious FT/DEX pairs
+- **No unpause capability** - requires contract redeployment for recovery
 
-```clarity
-;; Direct hardcoded contract calls - inflexible
-(contract-call? 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.usda-faktory-pool
-                swap-a-to-b sbtc-amount-to-user min-amount-out)
+### 4. Payload Structure
 
-(contract-call? 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ.pepe-faktory-pool
-                swap-a-to-b sbtc-amount-to-user fat-finger-out)
-```
-
-#### After (AI BTC Version):
+Both deposit and swap functions use the same payload format:
 
 ```clarity
-;; Dynamic trait-based calls with allowlist validation
-(ai-dex-allowed (unwrap! (get-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
-(ai-config (contract-call? ai-account get-configuration))
-(ai-owner (get owner ai-config))
-
-(asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
-(asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
-
-(contract-call? ai-dex buy ft sbtc-amount-to-user)
+{ p: principal, amount: uint }
 ```
 
-**Architecture Changes**:
+- `p`: AI account owner principal (verified against AI account)
+- `amount`: For swaps = minimum tokens out, for deposits = unused
 
-- ✅ **Hardcoded addresses** → **Allowlist governance**
-- ✅ **Direct pool calls** → **Trait-based interfaces**
-- ✅ **`swap-a-to-b` method** → **`buy` method**
-- ✅ **No validation** → **AI account owner verification**
+This ensures users can always fall back to deposits if swap parameters are invalid (ft/dex not allowed).
 
-### 3. **NEW: Trait Imports** (Lines 4-6)
+## Function Categories
 
-**Purpose**: Support for AI account interfaces
+### Core Processing Functions
 
-```clarity
-(use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait)
-(use-trait faktory-dex 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.faktory-dex-trait-v1-1.dex-trait)
-(use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
+#### Direct Deposits
+
+- `process-btc-deposit` (SegWit)
+- `process-btc-deposit-legacy` (Legacy)
+
+Converts BTC directly to sBTC with AI account verification.
+
+#### Swap Functions
+
+- `swap-btc-to-aibtc` (SegWit)
+- `swap-btc-to-aibtc-legacy` (Legacy)
+
+Converts BTC to AI BTC tokens via allowlisted DEX, with fallback to sBTC.
+
+### Governance Functions
+
+#### Allowlist Management
+
+- `propose-allowlist-pair(ft-contract, dex-contract)` - Propose new FT/DEX pair
+- `signal-allowlist-approval(proposal-id)` - Signal approval (3-of-5 required)
+- `remove-allowlist-pair(ft-contract)` - Remove pair (any approver)
+
+#### Emergency Controls
+
+- `emergency-stop-swaps()` - Permanently pause all swaps (any approver)
+
+- **Pool Management (Operator Only)**: Pool setup, liquidity management, parameter updates
+- `initialize-pool(sbtc-amount, btc-receiver)` - Initial setup
+- `add-liquidity-to-pool(sbtc-amount, btc-receiver?)` - Add sBTC liquidity
+- `signal-withdrawal()` / `withdraw-from-pool()` - Remove liquidity
+- `set-params(max-deposit, fee, fee-threshold)` - Update parameters
+
+- **Refund System**: Request and process BTC refunds for failed transactions
+- `request-refund(btc-refund-receiver, ...)` - Request BTC refund
+- `process-refund(refund-id, ...)` - Process refund with proof
+
+## Security Model
+
+### Governance Structure
+
+- **5 Approvers**: Hardcoded in `is-approver` function
+- **3-of-5 Threshold**: Required for allowlist additions
+- **7-Day Window**: Proposals expire after 1008 blocks
+- **Single Approver**: Can remove pairs or trigger emergency stop
+
+### AI Account Verification
+
+- All transactions verify `stx-receiver` matches AI account owner
+- Frontend prevents deposits without valid AI accounts
+- Contract enforces verification on-chain during processing
+
+### Emergency Response
+
+1. **Malicious DEX detected** → Any approver calls `emergency-stop-swaps()`
+2. **Clean up** → Any approver calls `remove-allowlist-pair(ft-contract)`
+3. **Recovery** → Deploy new contract if needed (no unpause mechanism)
+
+## Fee Structure
+
+- **Variable fees** based on deposit size
+- **Fee threshold**: Deposits ≤ threshold pay 50% fee
+- **Maximum fee**: Capped at `FIXED_FEE` (21,000 sats)
+
+## Integration Notes
+
+### Frontend Requirements
+
+- Must verify user has AI BTC account before allowing deposits
+- Should check allowlist status for swap functionality
+- Must handle both swap and deposit payload formats
+
+### Payload Construction
+
+```javascript
+// For swaps (with slippage protection)
+const payload = { p: aiAccountOwner, amount: minTokensOut };
+
+// For deposits (amount ignored)
+const payload = { p: aiAccountOwner, amount: 0 };
 ```
 
----
+### Error Handling
 
-## 🛡️ **Security Comparison**
+- Swap failures automatically fall back to sBTC transfer
+- Insufficient slippage falls back to sBTC transfer
+- Users always receive value (either tokens or sBTC)
 
-| Aspect                 | Mainnet Version          | AI BTC Version                          |
-| ---------------------- | ------------------------ | --------------------------------------- |
-| **Contract Calls**     | Hardcoded addresses      | Dynamic via traits                      |
-| **Pool Methods**       | `swap-a-to-b`            | `buy` (trait method)                    |
-| **Token/DEX Pairs**    | Fixed USDA/PEPE pools    | Governed token/DEX pairs                |
-| **Account Validation** | Basic STX receiver       | AI account owner verification           |
-| **Adding New Tokens**  | Redeploy required        | Governance proposal for token/DEX pairs |
-| **Attack Vectors**     | Operator compromise only | Requires 3-of-5 + operator              |
+## Constants
 
-**Result**: AI BTC version replaces **fixed hardcoded pools** with **flexible governed traits** + enhanced security
+- `MIN_SATS`: 10,000 (minimum deposit)
+- `COOLDOWN`: 6 blocks (processing cooldown)
+- `APPROVAL_WINDOW`: 1,008 blocks (7 days)
+- `SIGNALS_REQUIRED`: 3 (out of 5 approvers)
+- `WITHDRAWAL_COOLOFF`: 144 blocks (1 day)
 
----
+## Read-Only Functions
 
-## 📍 **Key Line References**
-
-### New Allowlist System:
-
-- **Lines 84-217**: Complete allowlist mechanism
-- **Lines 118-156**: Proposal creation
-- **Lines 158-202**: Multi-sig approval process
-
-### AI BTC Integration:
-
-- **Lines 720-730**: AI account validation in `swap-btc-to-aibtc`
-- **Lines 820-830**: AI account validation in `swap-btc-to-aibtc-legacy`
-- **Lines 854-865**: Allowlist checking logic
-
-### Enhanced Error Handling:
-
-- **Lines 26-33**: New error constants for allowlist/AI features
-
----
-
-## 🔄 **Unchanged (Battle-tested)**
-
-✅ **All Bitcoin processing logic** (parse functions, merkle proofs, etc.)
-✅ **Pool management** (liquidity, withdrawals, fees)
-✅ **Core swap mechanics** (BTC → sBTC conversion)
-✅ **Refund system** (edge case handling)
-✅ **Cooldown mechanisms** (security delays)
-
----
-
-## 🎯 **Benefits for AI BTC**
-
-1. **Flexibility**: Add new token/DEX pairs without redeploying
-2. **Security**: Decentralized governance prevents single points of failure
-3. **AI Integration**: Native support for AI-managed accounts
-4. **Future-proof**: Can adapt to new tokens/DEXes via governance for token/DEX pair approvals
-
----
-
-## 🚀 **Deployment Strategy**
-
-1. **Demo Mode**: Deploy with current operator for testing
-2. **Production**: Upgrade operator to multi-sig for full decentralization
-3. **Governance**: Community-driven token pair approvals
-
----
-
-## 💡 **Review Focus Areas**
-
-1. **Allowlist Logic**: Lines 84-217 (new governance system)
-2. **AI Account Validation**: Lines 720-730, 820-830 (security checks)
-3. **Error Handling**: Lines 26-33 (new error constants)
-4. **Trait Integration**: Lines 4-6 (interface definitions)
-
-The rest is **proven mainnet code** with extensive battle-testing! 🛡️
+- `get-pool()` - Pool status and parameters
+- `get-dex-allowed(ft-contract)` - Check if FT/DEX pair is allowlisted
+- `are-swaps-paused()` - Check emergency stop status
+- `is-approver(who)` - Check if address is an approver
+- `get-allowlist-proposal(proposal-id)` - Get proposal details
+- `is-tx-processed(tx-id)` - Check if BTC transaction was processed
