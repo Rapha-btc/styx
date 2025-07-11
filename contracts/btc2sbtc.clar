@@ -589,26 +589,6 @@
   )
 )
 
-(define-read-only (parse-pay-legacy (tx (buff 4096)))
-  (match (get-output-legacy tx u0)
-    parsed-result (let (
-        (script (get scriptPubKey parsed-result))
-        (script-len (len script))
-        ;; lenght is dynamic one or two bytes!
-        (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4c)
-          u3
-          u2
-        ))
-        (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
-      )
-      (asserts! (> (len payload) u2) ERR-ELEMENT-EXPECTED)
-      (ok (from-consensus-buff? { p: principal } payload))
-    )
-    not-found
-    ERR-ELEMENT-EXPECTED
-  )
-)
-
 (define-read-only (parse-payload-legacy-refund (tx (buff 4096)))
   (match (get-output-legacy tx u0)
     parsed-result (let (
@@ -712,7 +692,7 @@
           out (if (>= (get value out) MIN_SATS)
             (let (
                 (btc-amount (get value out))
-                (payload (unwrap! (parse-pay-segwit tx-buff) ERR-ELEMENT-EXPECTED))
+                (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                 (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                   (/ fixed-fee u2)
@@ -822,7 +802,7 @@
           out (if (>= (get value out) MIN_SATS)
             (let (
                 (btc-amount (get value out))
-                (payload (unwrap! (parse-pay-legacy tx-buff) ERR-ELEMENT-EXPECTED))
+                (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
                 (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                   (/ fixed-fee u2)
