@@ -4,7 +4,8 @@
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait) 
 (use-trait faktory-dex 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.faktory-dex-trait-v1-1.dex-trait) 
-(use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
+;; (use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
+(use-trait aibtc-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
@@ -37,6 +38,8 @@
 (define-constant ERR_INSUFFICIENT_SIGNALS (err u147))
 (define-constant ERR_PROPOSAL_EXECUTED (err u148))
 (define-constant ERR-DEX-NOT-ALLOWED (err u149))
+(define-constant ERR-GET-CONFIG (err u150))
+(define-constant ERR-GET-QUOTE (err u151))
 
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
@@ -739,7 +742,7 @@
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
-                (ai-config (contract-call? ai-account get-configuration))
+                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
@@ -849,7 +852,7 @@
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
-                (ai-config (contract-call? ai-account get-configuration))
+                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
@@ -969,10 +972,10 @@
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
-                (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
+                (in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
                 (tokens-out (get tokens-out in-info))
                 (ai-dex-allowed (unwrap! (get-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
-                (ai-config (contract-call? ai-account get-configuration))
+                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
@@ -1009,7 +1012,7 @@
               })
               (if (>= tokens-out min-amount-out)
                     (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
-                        result (begin 
+                        buy-result (begin 
                             (if is-ai-account
                                 (try! (as-contract (contract-call? ft transfer 
                                                             tokens-out tx-sender (contract-of ai-account) none))) 
@@ -1108,10 +1111,10 @@
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
-                (in-info (contract-call? ai-dex get-in sbtc-amount-to-user))
+                (in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
                 (tokens-out (get tokens-out in-info))
                 (ai-dex-allowed (unwrap! (get-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
-                (ai-config (contract-call? ai-account get-configuration))
+                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
@@ -1148,7 +1151,7 @@
               })
               (if (>= tokens-out min-amount-out)
                     (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
-                        result (begin 
+                        buy-result (begin 
                             (if is-ai-account
                                 (try! (as-contract (contract-call? ft transfer 
                                                             tokens-out tx-sender (contract-of ai-account) none))) 
