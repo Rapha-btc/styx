@@ -128,7 +128,7 @@
 (define-map allowed-dex-pairs principal principal) ;; ft -> dex
 
 
-(define-public (propose-allowlist-pair (ft-contract <faktory-token>) (dex-contract <faktory-token>))
+(define-public (propose-allowlist-pair (ft-contract <faktory-token>) (dex-contract <faktory-dex>))
   (let ((proposal-id (var-get next-proposal-id)))
     (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
     
