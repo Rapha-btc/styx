@@ -3,7 +3,6 @@
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1.sip-010-trait) 
 (use-trait faktory-dex 'ST2RGXKTT1ME8DPKHZAVDWKYWRM0CWZ6EGC8GDNGC.aibtc-dao-traits.faktory-dex) 
-;; (use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
 (use-trait aibtc-account 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock.aibtc-account)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)

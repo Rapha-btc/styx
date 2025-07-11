@@ -5,15 +5,21 @@ authors = []
 telemetry = false
 cache_dir = './.cache'
 requirements = [
-    {contract_id = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", epoch = "3.1", clarity_version = 3},
-    {contract_id = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock", epoch = "3.1", clarity_version = 3}
-
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1", epoch = "3.1", clarity_version = 3},
+    {contract_id = "ST2RGXKTT1ME8DPKHZAVDWKYWRM0CWZ6EGC8GDNGC.aibtc-dao-traits", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1", epoch = "3.1", clarity_version = 3}
 ]
 
-[contracts.btc2sbtc]
-path = 'contracts/btc2sbtc.clar'
+[contracts.btc2sbtc-testnet]
+path = 'contracts/btc2sbtc-testnet.clar'
 clarity_version = 3
 epoch = 3.1
+
 
 [repl.analysis]
 passes = ['check_checker']
