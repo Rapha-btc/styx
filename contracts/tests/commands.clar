@@ -50,6 +50,12 @@ Here's the complete flow to add an FT/DEX pair to the allowlist:
   'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.fakfun-faktory 
   'SP2ZNGJ85ENDY6QRHQ5P2D4FXKGZWCKTB2T0Z55KS.sbtc-fakfun-amm-lp-v1)
 ```
+```clarity
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc 
+  propose-allowlist-pair 
+  'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.fakfun-faktory 
+  'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.fakfun-faktory-dex)
+```
 *This returns a proposal ID (e.g., `u1`) and automatically counts as 1 signal*
 
 ### 2. **Signal approval** (2 more approvers needed)
