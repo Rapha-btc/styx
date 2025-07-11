@@ -1,8 +1,9 @@
+;; STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.btc2sbtc
 ;; Btc2Sbtc.com Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1.sip-010-trait) 
-(use-trait faktory-dex 'ST2RGXKTT1ME8DPKHZAVDWKYWRM0CWZ6EGC8GDNGC.aibtc-dao-traits.faktory-dex) 
+(use-trait faktory-dex 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-dao-trait.dex-trait) 
 (use-trait aibtc-account 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock.aibtc-account)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)

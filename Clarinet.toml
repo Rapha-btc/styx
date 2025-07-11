@@ -11,7 +11,7 @@ requirements = [
     {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2", epoch = "3.1", clarity_version = 3},
     {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2", epoch = "3.1", clarity_version = 3},
     {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1", epoch = "3.1", clarity_version = 3},
-    {contract_id = "ST2RGXKTT1ME8DPKHZAVDWKYWRM0CWZ6EGC8GDNGC.aibtc-dao-traits", epoch = "3.1", clarity_version = 3},
+    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-dao-trait", epoch = "3.1", clarity_version = 3},
     {contract_id = "STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1", epoch = "3.1", clarity_version = 3}
 ]
 
