@@ -44,7 +44,7 @@
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
 
-(define-constant OPERATOR_STYX 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ) 
+(define-constant OPERATOR_STYX 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ) ;; only 1 pool per operator else double spending 
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000)
 (define-constant MAX_SLIPPAGE u200000)
@@ -128,13 +128,13 @@
 (define-map allowed-dex-pairs principal principal) ;; ft -> dex
 
 
-(define-public (propose-allowlist-pair (ft-contract principal) (dex-contract principal))
+(define-public (propose-allowlist-pair (ft-contract <faktory-token>) (dex-contract <faktory-token>))
   (let ((proposal-id (var-get next-proposal-id)))
     (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
     
     (map-set allowlist-proposals proposal-id { 
-      ft-contract: ft-contract,
-      dex-contract: dex-contract,
+      ft-contract: (contract-of ft-contract),
+      dex-contract: (contract-of dex-contract),
       proposed-at: burn-block-height,
       signals: u1,
       executed: false
@@ -146,8 +146,8 @@
     (print {
       type: "allowlist-proposal",
       proposal-id: proposal-id,
-      ft-contract: ft-contract,
-      dex-contract: dex-contract,
+      ft-contract: (contract-of ft-contract),
+      dex-contract: (contract-of dex-contract),
       proposer: tx-sender
     })
     
@@ -176,7 +176,7 @@
         (begin
           (map-set allowed-dex-pairs (get ft-contract proposal) (get dex-contract proposal))
           (map-set allowlist-proposals proposal-id
-            (merge proposal { executed: true })
+            (merge proposal { signals: new-signals, executed: true }) 
           )
           (print {
             type: "allowlist-approved",
