@@ -48,11 +48,12 @@ The BTC2sBTC contract provides a trustless bridge from Bitcoin to AI BTC tokens 
 Both deposit and swap functions use the same payload format:
 
 ```clarity
-{ p: principal, amount: uint }
+{ p: principal, amount: uint, dex: principal }
 ```
 
 - `p`: AI account owner principal (verified against AI account)
 - `amount`: For swaps = minimum tokens out, for deposits = unused
+- `dex`: determines the dex and thus the ai dao tokens to buy
 
 This ensures users can always fall back to deposits if swap parameters are invalid (ft/dex not allowed).
 
@@ -135,16 +136,21 @@ Converts BTC to AI BTC tokens via allowlisted DEX, with fallback to sBTC.
 
 ```javascript
 // For swaps (with slippage protection)
-const payload = { p: aiAccountOwner, amount: minTokensOut };
+const payload = { p: aiAccountOwner, amount: minTokensOut, dex: dexContract };
 
-// For deposits (amount ignored)
-const payload = { p: aiAccountOwner, amount: 0 };
+// For deposits (amount and dex ignored)
+const payload = {
+  p: aiAccountOwner,
+  amount: 0,
+  dex: SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc - token,
+};
 ```
 
 ### Error Handling
 
 - Swap failures automatically fall back to sBTC transfer
-- Insufficient slippage falls back to sBTC transfer
+- Too much slippage falls back to sBTC transfer
+- Swaps can be switched over to sBTC deposits (same payloads)
 - Users always receive value (either tokens or sBTC)
 
 ## Constants
