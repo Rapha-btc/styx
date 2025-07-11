@@ -1,10 +1,10 @@
 ;; Btc2Sbtc.com Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
-(use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait) 
-(use-trait faktory-dex 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.faktory-dex-trait-v1-1.dex-trait) 
+(use-trait faktory-token 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1.sip-010-trait) 
+(use-trait faktory-dex 'ST2RGXKTT1ME8DPKHZAVDWKYWRM0CWZ6EGC8GDNGC.aibtc-dao-traits.faktory-dex) 
 ;; (use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
-(use-trait aibtc-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
+(use-trait aibtc-account 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock.aibtc-account)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
@@ -43,7 +43,7 @@
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
 
-(define-constant OPERATOR_STYX 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ) ;; only 1 pool per operator else double spending 
+(define-constant OPERATOR_STYX 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2) ;; only 1 pool per operator else double spending 
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000)
 (define-constant MAX_SLIPPAGE u200000)
@@ -100,11 +100,11 @@
 ;;
 (define-read-only (is-approver (who principal))
   (or 
-    (is-eq who 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ)  ;; Approver 1
-    (is-eq who 'SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW)      ;; Approver 2  
-    (is-eq who 'SP3PEBWZ8PQK1M82MS4DVD3V9DE9ZS6F25S6PEF0R)      ;; Approver 3
-    (is-eq who 'SPP3HM2E4JXGT26G1QRWQ2YTR5WT040S5NKXZYFC)      ;; Approver 4
-    (is-eq who 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22)      ;; Approver 5
+    (is-eq who 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)  ;; Approver 1
+    (is-eq who 'ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6)      ;; Approver 2  
+    (is-eq who 'ST28MP1HQDJWQAFSQJN2HBAXBVP7H7THD1Y83JDEY)      ;; Approver 3
+    (is-eq who 'ST1PE5V7DS1YPXGV1AZ80G7H6DNRHN79N23ZGE27N)      ;; Approver 4
+    (is-eq who 'ST3SPSJDYGHF0ARGV1TNS0HX6JEP7T1J6849A7BB4)      ;; Approver 5
   )
 )
 
@@ -380,7 +380,7 @@
     (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
     (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
     (asserts! (> sbtc-amount u0) ERR_AMOUNT_NULL)
-    (match (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token
+    (match (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token
       transfer sbtc-amount tx-sender (as-contract tx-sender) none
     )
       success (begin
@@ -418,7 +418,7 @@
     )
     (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
     (asserts! (> sbtc-amount u0) ERR_AMOUNT_NULL)
-    (match (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token
+    (match (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token
       transfer sbtc-amount tx-sender (as-contract tx-sender) none
     )
       success (begin
@@ -512,7 +512,7 @@
             withdrawal-signaled-at: none,
           })
         )
-        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token
+        (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token
           transfer available-sbtc tx-sender (var-get current-operator) none
         )))
         (print {
@@ -586,7 +586,7 @@
     (index uint)
   )
   (let ((parsed-tx (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       parse-wtx tx false
     )))
     (match parsed-tx
@@ -653,7 +653,7 @@
     (index uint)
   )
   (let ((parsed-tx (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       parse-tx tx
     )))
     (match parsed-tx
@@ -711,7 +711,7 @@
       (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
         concat-wtx wtx witness-data
       ))
     )
@@ -719,7 +719,7 @@
       ERR_IN_COOLDOWN
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
       wproof witness-merkle-root witness-reserved-value ctx cproof
     )
@@ -763,9 +763,9 @@
                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
               )
               (if is-ai-account
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender stx-receiver none))))
               (print {
                 type: "process-btc-deposit",
@@ -822,7 +822,7 @@
       (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
         tx
       ))
     )
@@ -830,7 +830,7 @@
       ERR_IN_COOLDOWN
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-tx-mined-compact height tx-buff blockheader proof
     )
       result (begin
@@ -873,9 +873,9 @@
                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
               )
               (if is-ai-account
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender stx-receiver none))))
               (print {
                 type: "process-btc-deposit",
@@ -938,7 +938,7 @@
       (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
         concat-wtx wtx witness-data
       ))
     )
@@ -947,7 +947,7 @@
       ERR_IN_COOLDOWN
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
       wproof witness-merkle-root witness-reserved-value ctx cproof
     )
@@ -1020,17 +1020,17 @@
                             (ok true))
                         error (begin 
                             (if is-ai-account
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender stx-receiver none)))) 
                             (ok true))
                     )
                     (begin 
                             (if is-ai-account
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender stx-receiver none)))) 
                             (ok true)))
             )
@@ -1078,7 +1078,7 @@
       (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
         tx
       ))
     )
@@ -1087,7 +1087,7 @@
       ERR_IN_COOLDOWN
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-tx-mined-compact height tx-buff blockheader proof
     )
       result (begin
@@ -1159,17 +1159,17 @@
                             (ok true))
                         error (begin 
                             (if is-ai-account
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender stx-receiver none)))) 
                             (ok true))
                     )
                     (begin 
                             (if is-ai-account
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
+                                (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender stx-receiver none)))) 
                             (ok true)))
             )
@@ -1251,13 +1251,13 @@
   )
   (let (
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1
         concat-wtx wtx witness-data
       ))
       (refund-id (var-get next-refund-id))
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
       wproof witness-merkle-root witness-reserved-value ctx cproof
     )
@@ -1348,7 +1348,7 @@
   (let (
       (refund (unwrap! (map-get? refund-requests refund-id) ERR_INVALID_ID))
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1
         concat-wtx wtx witness-data
       ))
       (payload (unwrap! (parse-payload-segwit-refund tx-buff) ERR-ELEMENT-EXPECTED))
@@ -1361,7 +1361,7 @@
     (asserts! (not (get done refund)) ERR_ALREADY_DONE)
     (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
       wproof witness-merkle-root witness-reserved-value ctx cproof
     )
@@ -1429,13 +1429,13 @@
   )
   (let (
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
         tx
       ))
       (refund-id (var-get next-refund-id))
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-tx-mined-compact height tx-buff blockheader proof
     )
       result (begin
@@ -1522,7 +1522,7 @@
   (let (
       (refund (unwrap! (map-get? refund-requests refund-id) ERR_INVALID_ID))
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
         tx
       ))
       (payload (unwrap! (parse-payload-legacy-refund tx-buff) ERR-ELEMENT-EXPECTED))
@@ -1535,7 +1535,7 @@
     (asserts! (not (get done refund)) ERR_ALREADY_DONE)
     (asserts! (is-eq refund-id-extracted refund-id) ERR_INVALID_ID)
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-tx-mined-compact height tx-buff blockheader proof
     )
       result (begin
@@ -1605,7 +1605,7 @@
     (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
     (asserts! (not (var-get is-initialized)) ERR_ALREADY_DONE)
     (asserts! (> sbtc-amount u0) ERR_AMOUNT_NULL)
-    (match (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token
+    (match (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token
       transfer sbtc-amount tx-sender (as-contract tx-sender) none
     )
       success (begin
