@@ -197,20 +197,21 @@
   )
 )
 
-;; Emergency pause flag
+;; Emergency pause flag - one way only
 (define-data-var swaps-paused bool false)
 
-;; Toggle swap pause - any approver can pause/unpause
-(define-public (toggle-swap-pause)
+;; Emergency stop - any approver can pause swaps permanently
+(define-public (emergency-stop-swaps)
   (begin
     (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
-    (var-set swaps-paused (not (var-get swaps-paused)))
+    (asserts! (not (var-get swaps-paused)) ERR_ALREADY_DONE)
+    (var-set swaps-paused true)
     (print {
-      type: "swap-pause-toggled",
-      paused: (var-get swaps-paused),
-      toggler: tx-sender
+      type: "emergency-stop",
+      stopped-by: tx-sender,
+      block-height: burn-block-height
     })
-    (ok (var-get swaps-paused))
+    (ok true)
   )
 )
 
