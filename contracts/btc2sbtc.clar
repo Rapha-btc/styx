@@ -197,6 +197,42 @@
   )
 )
 
+;; Emergency pause flag
+(define-data-var swaps-paused bool false)
+
+;; Toggle swap pause - any approver can pause/unpause
+(define-public (toggle-swap-pause)
+  (begin
+    (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
+    (var-set swaps-paused (not (var-get swaps-paused)))
+    (print {
+      type: "swap-pause-toggled",
+      paused: (var-get swaps-paused),
+      toggler: tx-sender
+    })
+    (ok (var-get swaps-paused))
+  )
+)
+
+;; Read-only function to check pause status
+(define-read-only (are-swaps-paused)
+  (var-get swaps-paused)
+)
+
+;; clean up after emergency
+(define-public (remove-allowlist-pair (ft-contract principal))
+  (begin
+    (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
+    (map-delete allowed-dex-pairs ft-contract) ;; returns false if inexistant
+    (print {
+      type: "allowlist-removed",
+      ft-contract: ft-contract,
+      remover: tx-sender
+    })
+    (ok true)
+  )
+)
+
 (define-read-only (get-dex-allowed (ft-contract principal))
   (map-get? allowed-dex-pairs ft-contract)
 )
@@ -903,6 +939,7 @@
         concat-wtx wtx witness-data
       ))
     )
+    (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
     )
@@ -1040,6 +1077,7 @@
         tx
       ))
     )
+    (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
     )
