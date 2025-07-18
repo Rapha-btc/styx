@@ -1,3 +1,4 @@
+;; old pool we want to maintain backward compatibility for now in our backend which can do multi-pools
 ;; SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ.styx-v1
 ;; Styx Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to Economies on BTC 
