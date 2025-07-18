@@ -1028,8 +1028,8 @@
                     (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                     sbtc-amount-to-user tx-sender ai-account none)))
                   )
-                  (match (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
-                            ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out)
+                  (match (as-contract (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
+                            ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
                         swap-result (try! (as-contract (contract-call? ft transfer 
                                                       swap-result tx-sender ai-account none))) 
                         error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
