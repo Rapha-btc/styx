@@ -1,171 +1,165 @@
-# BTC2sBTC AI BTC Bridge Contract
+# BTC2sBTC AI Bridge Pool Contract
 
 ## Overview
 
-The BTC2sBTC contract provides a trustless bridge from Bitcoin to AI BTC tokens on the Stacks ecosystem. This enhanced version includes specialized functionality for AI BTC DAO use cases, with both direct sBTC deposits and automatic swapping to AI BTC tokens.
+The BTC2sBTC Pool Contract provides a trustless bridge from Bitcoin to AI economies on the Stacks ecosystem. It supports direct sBTC deposits and automatic swapping to AI BTC tokens via governance-approved DEX/Pool pairs.
 
 ## Key Features
 
-- **Direct BTC to sBTC deposits** with AI account verification
-- **BTC to AI BTC token swaps** via allowlisted DEX pairs
-- **Governance-controlled allowlist** for FT/DEX pairs (3-of-5 multisig)
-- **Emergency controls** for security
-- **Pool management** with operator controls
-- **Refund mechanisms** for failed transactions
+- **🔗 Bitcoin to sBTC Bridge** - Direct BTC deposits with AI account verification
+- **🔄 Smart Token Swaps** - Automatic routing to AI tokens via approved trading pairs
+- **🏛️ Governance Controls** - 3-of-5 multisig approval for new trading pairs
+- **🚨 Emergency Security** - Immediate swap halt capability
+- **💧 Pool Management** - Operator-controlled liquidity and parameters
+- **↩️ Refund System** - Bitcoin-verified refund mechanisms
+- **⚡ Adaptive Routing** - Supports both DEX and AMM pool integrations
 
-## Main Changes from Original BTC2sBTC Contract
+## Core Functions
 
-### 1. AI Account Integration
+### Token Swaps
 
-- All deposit/swap functions now require AI account verification
-- Payloads must contain the AI account owner's principal
-- Added `ai-account` trait parameter to processing functions
-- Frontend enforces AI account ownership before allowing deposits
+**Primary Functions**:
 
-### 2. Enhanced Swap Functionality
+- `swap-btc-to-aibtc(...)` - SegWit BTC → AI tokens
+- `swap-btc-to-aibtc-legacy(...)` - Legacy BTC → AI tokens
 
-- New `swap-btc-to-aibtc` and `swap-btc-to-aibtc-legacy` functions
-- Automatic DEX integration for BTC → AI BTC token conversion
-- Slippage protection with `min-amount-out` parameter
-- Fallback to direct sBTC transfer if swap fails or insufficient output
+**Smart Routing**:
 
-### 3. Governance & Security Controls
+- Automatically detects if tokens are bonded (use AMM) or unbonded (use DEX)
+- Falls back to sBTC transfer if swap fails
+- Slippage protection via minimum amount out
 
-#### Allowlist Management
+### Direct Deposits
 
-- **3-of-5 multisig approval** for adding FT/DEX pairs
-- **Single approver removal** for emergency cleanup
-- **7-day approval window** with auto-execution at 3 signals
+- `process-btc-deposit(...)` - SegWit BTC → sBTC
+- `process-btc-deposit-legacy(...)` - Legacy BTC → sBTC
 
-#### Emergency Controls
+All deposits require AI account verification.
 
-- **One-way emergency stop** - any approver can permanently pause swaps
-- **Immediate removal** of malicious FT/DEX pairs
-- **No unpause capability** - requires contract redeployment for recovery
+### Governance
 
-### 4. Payload Structure
-
-Both deposit and swap functions use the same payload format:
+**Allowlist Management**:
 
 ```clarity
-{ p: principal, amount: uint, dex: principal }
+propose-allowlist-dexes(ft-contract, dex-contract, pool-contract)
+signal-allowlist-approval(proposal-id)
 ```
 
-- `p`: AI account owner principal (verified against AI account)
-- `amount`: For swaps = minimum tokens out, for deposits = unused
-- `dex`: determines the dex and thus the ai dao tokens to buy
+- Propose new trading pairs
+- 3-of-5 approver threshold for activation
+- 7-day review period
+- **Immutable mappings** - approved proposal IDs cannot be removed or amended with different tokens (prevents operator rug mechanisms)
 
-This ensures users can always fall back to deposits if swap parameters are invalid (ft/dex not allowed).
+**Emergency Controls**:
 
-## Function Categories
+```clarity
+emergency-stop-swaps()
+```
 
-### Core Processing Functions
+- Any approver can permanently halt swaps (deposits remain functional)
+- Users always receive value via `process-btc-deposit` functions - not a rug vector for operators
+- Protects pool from depletion if malicious tokens/DEXs bypass allowlist approval
+- No unpause mechanism (requires redeployment)
 
-#### Direct Deposits
+### Pool Operations
 
-- `process-btc-deposit` (SegWit)
-- `process-btc-deposit-legacy` (Legacy)
+**Operator Functions**:
 
-Converts BTC directly to sBTC with AI account verification.
+- `initialize-pool()` - One-time setup by operator (can only be called once)
+- `add-liquidity-to-pool()` - Add sBTC liquidity
+- `set-params()` - Update fees and limits
+- `withdraw-from-pool()` - Remove liquidity
 
-#### Swap Functions
+All operations include cooldown periods for security.
 
-- `swap-btc-to-aibtc` (SegWit)
-- `swap-btc-to-aibtc-legacy` (Legacy)
+## Integration
 
-Converts BTC to AI BTC tokens via allowlisted DEX, with fallback to sBTC.
+### Payload Format
 
-### Governance Functions
+```javascript
+{
+  p: aiAccountContractPrincipal,  // AI account to receive tokens/sBTC
+  a: minimumAmountOut,           // Slippage protection for swaps
+  d: proposalId                  // Approved trading pair identifier
+}
+```
 
-#### Allowlist Management
+### Frontend Requirements
 
-- `propose-allowlist-pair(ft-contract, dex-contract)` - Propose new FT/DEX pair
-- `signal-allowlist-approval(proposal-id)` - Signal approval (3-of-5 required)
-- `remove-allowlist-pair(ft-contract)` - Remove pair (any approver)
+1. Verify user has valid AI account
+2. Check proposal ID is approved via `get-dex-allowed(proposal-id)`
+3. Handle emergency stop status via `are-swaps-paused()`
+4. Implement fallback for swap failures
 
-#### Emergency Controls
+### Error Handling
 
-- `emergency-stop-swaps()` - Permanently pause all swaps (any approver)
-
-- **Pool Management (Operator Only)**: Pool setup, liquidity management, parameter updates
-- `initialize-pool(sbtc-amount, btc-receiver)` - Initial setup
-- `add-liquidity-to-pool(sbtc-amount, btc-receiver?)` - Add sBTC liquidity
-- `signal-withdrawal()` / `withdraw-from-pool()` - Remove liquidity
-- `set-params(max-deposit, fee, fee-threshold)` - Update parameters
-
-- **Refund System**: Request and process BTC refunds for failed transactions
-- `request-refund(btc-refund-receiver, ...)` - Request BTC refund
-- `process-refund(refund-id, ...)` - Process refund with proof
+- Invalid proposal ID → Transaction fails
+- Swap failure → Automatic sBTC transfer
+- Slippage protection triggered → Automatic sBTC transfer
+- Emergency stop → Swaps disabled, deposits still functional
 
 ## Security Model
 
 ### Governance Structure
 
-- **5 Approvers**: Hardcoded in `is-approver` function
-- **3-of-5 Threshold**: Required for allowlist additions
-- **7-Day Window**: Proposals expire after 1008 blocks
-- **Single Approver**: Can remove pairs or trigger emergency stop
+**5 Approvers** (hardcoded):
 
-### AI Account Verification
+- `SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ`
+- `SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW`
+- `SP3PEBWZ8PQK1M82MS4DVD3V9DE9ZS6F25S6PEF0R`
+- `SPP3HM2E4JXGT26G1QRWQ2YTR5WT040S5NKXZYFC`
+- `SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22`
 
-- All transactions verify `stx-receiver` matches AI account owner
-- Frontend prevents deposits without valid AI accounts
-- Contract enforces verification on-chain during processing
+**Requirements**:
 
-### Emergency Response
+- 3 signatures to approve new trading pairs
+- 1 signature to emergency stop ALL swaps (anti-rug protection)
+- 7-day window for proposal review
 
-1. **Malicious DEX detected** → Any approver calls `emergency-stop-swaps()`
-2. **Clean up** → Any approver calls `remove-allowlist-pair(ft-contract)`
-3. **Recovery** → Deploy new contract if needed (no unpause mechanism)
+### Protection Mechanisms
+
+- **Immutable Mappings**: Proposal → contract mappings never change
+- **AI Account Verification**: Bitcoin OP_RETURN specifies AI account contract; verified on-chain that user controls that account
+- **Emergency Halt**: Immediate swap disable capability (deposit fallback prevents operator rug)
+- **Cooldown Periods**: Prevent rapid parameter changes
 
 ## Fee Structure
 
-- **Variable fees** based on deposit size
-- **Fee threshold**: Deposits ≤ threshold pay 50% fee
-- **Maximum fee**: Capped at `FIXED_FEE` (21,000 sats)
+- **Dynamic Fees**: Configurable by operator via `set-params()`
+- **Current Default**: 6,000 sats standard fee, 3,000 sats for deposits ≤ 203,000 sats
+- **Fee Validation**: Must be ≤ 21,000 sats when setting parameters
+- **Fee Split**: Between platform and liquidity providers (implementation pending)
 
-## Integration Notes
+## Configuration
 
-### Frontend Requirements
+**Key Parameters**:
 
-- Must verify user has AI BTC account before allowing deposits
-- Should check allowlist status for swap functionality
-- Must handle both swap and deposit payload formats
-
-### Payload Construction
-
-```javascript
-// For swaps (with slippage protection)
-const payload = { p: aiAccountOwner, amount: minTokensOut, dex: dexContract };
-
-// For deposits (amount and dex ignored)
-const payload = {
-  p: aiAccountOwner,
-  amount: 0,
-  dex: SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc - token,
-};
-```
-
-### Error Handling
-
-- Swap failures automatically fall back to sBTC transfer
-- Too much slippage falls back to sBTC transfer
-- Swaps can be switched over to sBTC deposits (same payloads)
-- Users always receive value (either tokens or sBTC)
-
-## Constants
-
-- `MIN_SATS`: 10,000 (minimum deposit)
-- `COOLDOWN`: 6 blocks (processing cooldown)
-- `APPROVAL_WINDOW`: 1,008 blocks (7 days)
-- `SIGNALS_REQUIRED`: 3 (out of 5 approvers)
-- `WITHDRAWAL_COOLOFF`: 144 blocks (1 day)
+- Minimum deposit: 10,000 sats
+- Processing cooldown: 6 blocks
+- Approval window: 1,008 blocks (7 days)
+- Withdrawal cooldown: 144 blocks (1 day)
+- Signals required: 3 of 5 approvers
 
 ## Read-Only Functions
 
-- `get-pool()` - Pool status and parameters
-- `get-dex-allowed(ft-contract)` - Check if FT/DEX pair is allowlisted
-- `are-swaps-paused()` - Check emergency stop status
-- `is-approver(who)` - Check if address is an approver
-- `get-allowlist-proposal(proposal-id)` - Get proposal details
-- `is-tx-processed(tx-id)` - Check if BTC transaction was processed
+**Pool Status**:
+
+- `get-pool()` - Pool parameters and balances
+- `is-pool-initialized()` - Setup status
+- `are-swaps-paused()` - Emergency stop status
+
+**Governance**:
+
+- `get-dex-allowed(proposal-id)` - Check if AI token/DEX/pool combination is approved
+- `get-allowlist-proposal(proposal-id)` - Proposal details
+- `is-approver(address)` - Check approver status
+
+**Transactions**:
+
+- `is-tx-processed(tx-id)` - Check Bitcoin transaction status
+- `get-processed-tx(tx-id)` - Transaction details
+
+**Refunds**:
+
+- `get-refund-request(refund-id)` - Refund request details
+- `get-refund-count()` - Total refund requests
