@@ -87,7 +87,7 @@ All operations include cooldown periods for security.
 ### Frontend Requirements
 
 1. Verify user has valid AI account
-2. Check proposal ID is approved via `get-dex-allowed(proposal-id)`
+2. Check dex-id is approved via `get-dex-allowed(dex-id)`
 3. Handle emergency stop status via `are-swaps-paused()`
 4. Implement fallback for swap failures
 
@@ -150,7 +150,7 @@ All operations include cooldown periods for security.
 
 **Governance**:
 
-- `get-dex-allowed(proposal-id)` - Check if AI token/DEX/pool combination is approved
+- `get-dex-allowed(dex-id)` - Check if AI token/DEX/pool combination is approved
 - `get-allowlist-proposal(proposal-id)` - Proposal details
 - `is-approver(address)` - Check approver status
 
