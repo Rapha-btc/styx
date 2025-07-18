@@ -4,23 +4,42 @@ description = ''
 authors = []
 telemetry = false
 cache_dir = './.cache'
-requirements = [
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-dao-trait", epoch = "3.1", clarity_version = 3},
-    {contract_id = "STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1", epoch = "3.1", clarity_version = 3}
-]
 
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token'
+
+[[project.requirements]]
+contract_id = 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-dao-trait'
+
+[[project.requirements]]
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1'
 [contracts.btc2sbtc-testnet]
 path = 'contracts/btc2sbtc-testnet.clar'
 clarity_version = 3
 epoch = 3.1
 
-
+[contracts.no-ai-account]
+path = 'contracts/no-ai-account.clar'
+clarity_version = 3
+epoch = 3.1
 [repl.analysis]
 passes = ['check_checker']
 
@@ -33,7 +52,3 @@ callee_filter = false
 [repl.remote_data]
 enabled = true
 api_url = 'https://api.hiro.so'
-
-[networks]
-mainnet = "https://api.hiro.so"
-testnet = "https://api.testnet.hiro.so"

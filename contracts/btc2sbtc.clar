@@ -2,9 +2,10 @@
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait) 
-(use-trait faktory-dex 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.faktory-dex-trait-v1-1.dex-trait) 
+(use-trait faktory-dex 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.faktory-dex-trait.dex-trait) 
+(use-trait bitflow-pool 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-2.xyk-pool-trait)
 ;; (use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
-(use-trait aibtc-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
+;; (use-trait aibtc-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
@@ -39,6 +40,9 @@
 (define-constant ERR-DEX-NOT-ALLOWED (err u149))
 (define-constant ERR-GET-CONFIG (err u150))
 (define-constant ERR-GET-QUOTE (err u151))
+(define-constant ERR-WRONG-FT (err u152))
+(define-constant ERR-WRONG-POOL (err u153))
+(define-constant ERR-GET-BONDED (err 154))
 
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
@@ -124,16 +128,25 @@
   bool
 )
 
-(define-map allowed-dex-pairs principal principal) ;; ft -> dex
+(define-map allowed-dexes uint { 
+  ft-contract: principal, 
+  dex-contract: principal,
+  pool-contract: principal
+})
+(define-map ft-to-proposal-id principal uint) ;; Quick lookup: ft -> proposal-id
 
-
-(define-public (propose-allowlist-pair (ft-contract <faktory-token>) (dex-contract <faktory-dex>))
+(define-public (propose-allowlist-dexes 
+    (ft-contract <faktory-token>) 
+    (dex-contract <faktory-dex>)
+    (pool-contract <bitflow-pool>)
+  )
   (let ((proposal-id (var-get next-proposal-id)))
     (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
     
     (map-set allowlist-proposals proposal-id { 
       ft-contract: (contract-of ft-contract),
       dex-contract: (contract-of dex-contract),
+      pool-contract: (contract-of pool-contract),
       proposed-at: burn-block-height,
       signals: u1,
       executed: false
@@ -147,6 +160,7 @@
       proposal-id: proposal-id,
       ft-contract: (contract-of ft-contract),
       dex-contract: (contract-of dex-contract),
+      pool-contract: (contract-of pool-contract),
       proposer: tx-sender
     })
     
@@ -173,7 +187,13 @@
       ;; Auto-execute if we have enough signals
       (if (>= new-signals SIGNALS_REQUIRED)
         (begin
-          (map-set allowed-dex-pairs (get ft-contract proposal) (get dex-contract proposal))
+          ;; Store all four contracts using proposal-id as the key
+          (map-set allowed-dexes proposal-id {
+            ft-contract: (get ft-contract proposal),
+            dex-contract: (get dex-contract proposal),
+            pool-contract: (get pool-contract proposal)
+          })
+          
           (map-set allowlist-proposals proposal-id
             (merge proposal { signals: new-signals, executed: true }) 
           )
@@ -182,6 +202,7 @@
             proposal-id: proposal-id,
             ft-contract: (get ft-contract proposal),
             dex-contract: (get dex-contract proposal),
+            pool-contract: (get pool-contract proposal),
             signals: new-signals
           })
         )
@@ -190,6 +211,7 @@
           proposal-id: proposal-id,
           ft-contract: (get ft-contract proposal),
           dex-contract: (get dex-contract proposal),
+          pool-contract: (get pool-contract proposal),
           signals: new-signals
         })
       )
@@ -222,22 +244,8 @@
   (var-get swaps-paused)
 )
 
-;; clean up after emergency
-(define-public (remove-allowlist-pair (ft-contract principal))
-  (begin
-    (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
-    (map-delete allowed-dex-pairs ft-contract) ;; returns false if inexistant
-    (print {
-      type: "allowlist-removed",
-      ft-contract: ft-contract,
-      remover: tx-sender
-    })
-    (ok true)
-  )
-)
-
 (define-read-only (get-dex-allowed (ft-contract principal))
-  (map-get? allowed-dex-pairs ft-contract)
+  (map-get? allowed-dexes ft-contract)
 )
 
 (define-read-only (get-allowlist-proposal (proposal-id uint))
@@ -538,7 +546,7 @@
         ))
         (payload (unwrap! (slice? script offset script-len) ERR-ELEMENT-EXPECTED))
       )
-      (ok (from-consensus-buff? { p: principal, amount: uint, dex: principal } payload))
+      (ok (from-consensus-buff? { p: principal, a: uint, d: uint } payload))
     )
     not-found
     ERR-ELEMENT-EXPECTED
@@ -930,8 +938,8 @@
     (cproof (list 14 (buff 32)))
     (ft <faktory-token>)
     (ai-dex <faktory-dex>)
-    (ai-account <aibtc-account>)
-    (is-ai-account bool)
+    (ai-pool <bitflow-pool>)
+    (sbtc-token <faktory-token>)
   )
   (let (
       (current-pool (var-get pool))
@@ -960,9 +968,13 @@
             (let (
                 (btc-amount (get value out))
                 (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
-                (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (min-amount-out (unwrap! (get amount payload) ERR-ELEMENT-EXPECTED))
-                (dex-extracted (unwrap! (get dex payload) ERR-ELEMENT-EXPECTED))
+                (ai-account (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+                (min-amount-out (unwrap! (get a payload) ERR-ELEMENT-EXPECTED))
+                (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
+                (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
+                (ai-ft-allowed (get ft-contract dex-info))
+                (ai-dex-allowed (get dex-contract dex-info))
+                (ai-pool-allowed (get pool-contract dex-info))
                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
                   (/ fixed-fee u2)
                   fixed-fee
@@ -973,13 +985,11 @@
                 (max-deposit (get max-deposit current-pool))
                 (in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
                 (tokens-out (get tokens-out in-info))
-                (ai-dex-allowed (unwrap! (get-dex-allowed (contract-of ft)) ERR-DEX-NOT-ALLOWED))
-                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
-                (ai-owner (get owner ai-config))
+                (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
               )
-              (asserts! (is-eq stx-receiver ai-owner) ERR-WRONG-AI-ACCOUNT)
+              (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
               (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
-              (asserts! (is-eq dex-extracted ai-dex-allowed) ERR-WRONG-DEX)
+              (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
               (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
@@ -1006,33 +1016,25 @@
                 btc-receiver: btc-receiver,
                 when: burn-block-height,
                 processor: tx-sender,
-                is-ai-account: is-ai-account,
                 min-amount-out: min-amount-out
               })
-              (if (>= tokens-out min-amount-out)
+              (if bonded
+                  (if (>= tokens-out min-amount-out)
                     (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
-                        buy-result (begin 
-                            (if is-ai-account
-                                (try! (as-contract (contract-call? ft transfer 
-                                                            tokens-out tx-sender (contract-of ai-account) none))) 
-                                (try! (as-contract (contract-call? ft transfer
-                                                            tokens-out tx-sender stx-receiver none)))) 
-                            (ok true))
-                        error (begin 
-                            (if is-ai-account
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                                            sbtc-amount-to-user tx-sender stx-receiver none)))) 
-                            (ok true))
-                    )
-                    (begin 
-                            (if is-ai-account
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            sbtc-amount-to-user tx-sender (contract-of ai-account) none)))
-                                (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer
-                                                            sbtc-amount-to-user tx-sender stx-receiver none)))) 
-                            (ok true)))
+                      buy-result (try! (as-contract (contract-call? ft transfer 
+                                                      tokens-out tx-sender ai-account none))) 
+                      error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                      sbtc-amount-to-user tx-sender ai-account none))))
+                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                    sbtc-amount-to-user tx-sender ai-account none)))
+                  )
+                  (match (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
+                            ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out)
+                        swap-result (try! (as-contract (contract-call? ft transfer 
+                                                      swap-result tx-sender ai-account none))) 
+                        error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                      sbtc-amount-to-user tx-sender ai-account none))))
+              ) 
             )
             ERR_TX_VALUE_TOO_SMALL
           )
@@ -1043,6 +1045,14 @@
     )
   )
 )
+;;     (match (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
+              
+;; (define-public (swap-x-for-y
+;;     (pool-trait <xyk-pool-trait>)
+;;     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
+;;     (x-amount uint) (min-dy uint)
+;;     )
+
 
 (define-public (swap-btc-to-aibtc-legacy
     (height uint)

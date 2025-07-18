@@ -191,6 +191,9 @@
     
     (define-read-only (get-open)
       (ok (var-get open)))
+
+    (define-read-only (get-bonded)
+      (ok (var-get bonded)))
   
     (define-public (open-market) 
       (let ((is-prelaunch-allowing (unwrap-panic (contract-call? 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.fakfun-pre-faktory is-market-open))))
