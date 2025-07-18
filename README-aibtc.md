@@ -127,7 +127,6 @@ All operations include cooldown periods for security.
 
 - **Dynamic Fees**: Configurable by operator via `set-params()`
 - **Current Default**: 6,000 sats standard fee, 3,000 sats for deposits ≤ 203,000 sats
-- **Fee Validation**: Must be ≤ 21,000 sats when setting parameters
 - **Fee Split**: Between platform and liquidity providers (implementation pending)
 
 ## Configuration
@@ -135,7 +134,7 @@ All operations include cooldown periods for security.
 **Key Parameters**:
 
 - Minimum deposit: 10,000 sats
-- Processing cooldown: 6 blocks
+- Operator cooldown: 6 blocks (prevents deposits being out of sync when changing parameters)
 - Approval window: 1,008 blocks (7 days)
 - Withdrawal cooldown: 144 blocks (1 day)
 - Signals required: 3 of 5 approvers
