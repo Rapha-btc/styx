@@ -5,7 +5,7 @@
 (use-trait faktory-dex 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.faktory-dex-trait.dex-trait) 
 (use-trait bitflow-pool 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-2.xyk-pool-trait)
 ;; (use-trait aibtc-account 'SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits.aibtc-account)
-;; (use-trait aibtc-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
+(use-trait aibtc-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
@@ -117,6 +117,7 @@
   {
     ft-contract: principal,
     dex-contract: principal,
+    pool-contract: principal,
     proposed-at: uint,
     signals: uint,
     executed: bool
@@ -133,7 +134,6 @@
   dex-contract: principal,
   pool-contract: principal
 })
-(define-map ft-to-proposal-id principal uint) ;; Quick lookup: ft -> proposal-id
 
 (define-public (propose-allowlist-dexes 
     (ft-contract <faktory-token>) 
@@ -244,8 +244,8 @@
   (var-get swaps-paused)
 )
 
-(define-read-only (get-dex-allowed (ft-contract principal))
-  (map-get? allowed-dexes ft-contract)
+(define-read-only (get-dex-allowed (dex-id uint))
+  (map-get? allowed-dexes dex-id)
 )
 
 (define-read-only (get-allowlist-proposal (proposal-id uint))
@@ -1376,7 +1376,7 @@
             )
             ERR_TX_VALUE_TOO_SMALL
           )
-          ERR_TX_NOT_SENT_TO_POOL
+          ERR_TX_NOT_SENT_TO_POOL ;; to btc-receiver
         )
       )
       error (err (* error u1000))
@@ -1410,6 +1410,7 @@
       hashes: (list 12 (buff 32)),
       tree-depth: uint,
     })
+    (ai-account <aibtc-account>)
   )
   (let (
       (tx-buff (contract-call?
