@@ -43,11 +43,13 @@
 (define-constant ERR-WRONG-FT (err u152))
 (define-constant ERR-WRONG-POOL (err u153))
 (define-constant ERR-GET-BONDED (err u154))
+(define-constant ERR-WRONG-SBTC (err u155))
 
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
 
 (define-constant OPERATOR_STYX 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ) ;; only 1 pool per operator else double spending 
+(define-constant SBTC_CONTRACT 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token)
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000)
 (define-constant MAX_SLIPPAGE u200000)
@@ -417,8 +419,8 @@
   )
 )
 
+;; this func without cool downs only adds liquidity - reserved
 (define-public (add-only-liquidity (sbtc-amount uint))
-  ;; this func without cool downs only adds liquidity - reserved
   (let (
       (current-pool (var-get pool))
       (new-total (+ (get total-sbtc current-pool) sbtc-amount))
@@ -766,6 +768,7 @@
                 btc-receiver: btc-receiver,
                 when: burn-block-height,
                 processor: tx-sender,
+                is-ai-account: is-ai-account
               })
               (ok true)
             )
@@ -964,7 +967,8 @@
                 (max-deposit (get max-deposit current-pool))
                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
               )
-              (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)              
+              (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
+              (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)                            
               (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
@@ -1100,6 +1104,7 @@
                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
               )
               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
+              (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              
               (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
@@ -1440,6 +1445,7 @@
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
+              (asserts! (is-eq tx-sender ai-owner) ERR_INVALID_STX_RECEIVER)
               (map-set processed-btc-txs result {
                 btc-amount: btc-amount,
                 sbtc-amount: u0,
