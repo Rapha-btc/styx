@@ -2,7 +2,7 @@
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc is-approver tx-sender)
 
 ;; Propose a new allowlist pair (only approvers can do this)
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc propose-allowlist-pair 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.test-token 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.test-dex)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc propose-allowlist-dexes 'SP331D6T77PNS2YZXR03CDC4G3XN0SYBPV69D8JW5.beast1-faktory 'SP331D6T77PNS2YZXR03CDC4G3XN0SYBPV69D8JW5.beast1-faktory-dex 'SP331D6T77PNS2YZXR03CDC4G3XN0SYBPV69D8JW5.xyk-pool-sbtc-beast1-v-1-1)
 
 ;; Check if someone has signaled for a proposal
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc has-signaled u1 tx-sender)
