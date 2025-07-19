@@ -752,6 +752,8 @@
                 is-ai-account: is-ai-account
               })
     (ok true)
+  )
+)
     ;; (match (contract-call?
     ;;   'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
     ;;   was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
@@ -824,8 +826,8 @@
     ;;  )
     ;;   error (err (* error u1000))
     ;; )
-  )
-)
+;;   )
+;; )
 
 ;; (define-public (process-btc-deposit-legacy
 ;;     (height uint)
