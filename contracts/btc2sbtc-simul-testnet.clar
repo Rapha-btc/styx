@@ -670,258 +670,305 @@
 )
 
 ;; Process a BTC deposit and release sBTC - by anyone
+    ;; (height uint)
+    ;; (wtx {
+    ;;   version: (buff 4),
+    ;;   ins: (list 50 {
+    ;;     outpoint: {
+    ;;       hash: (buff 32),
+    ;;       index: (buff 4),
+    ;;     },
+    ;;     scriptSig: (buff 1376),
+    ;;     sequence: (buff 4),
+    ;;   }),
+    ;;   outs: (list 50 {
+    ;;     value: (buff 8),
+    ;;     scriptPubKey: (buff 1376),
+    ;;   }),
+    ;;   locktime: (buff 4),
+    ;; })
+    ;; (witness-data (buff 1650))
+    ;; (header (buff 80))
+    ;; (tx-index uint)
+    ;; (tree-depth uint)
+    ;; (wproof (list 14 (buff 32)))
+    ;; (witness-merkle-root (buff 32))
+    ;; (witness-reserved-value (buff 32))
+    ;; (ctx (buff 4096))
+    ;; (cproof (list 14 (buff 32)))
 (define-public (process-btc-deposit
-    (height uint)
-    (wtx {
-      version: (buff 4),
-      ins: (list 50 {
-        outpoint: {
-          hash: (buff 32),
-          index: (buff 4),
-        },
-        scriptSig: (buff 1376),
-        sequence: (buff 4),
-      }),
-      outs: (list 50 {
-        value: (buff 8),
-        scriptPubKey: (buff 1376),
-      }),
-      locktime: (buff 4),
-    })
-    (witness-data (buff 1650))
-    (header (buff 80))
-    (tx-index uint)
-    (tree-depth uint)
-    (wproof (list 14 (buff 32)))
-    (witness-merkle-root (buff 32))
-    (witness-reserved-value (buff 32))
-    (ctx (buff 4096))
-    (cproof (list 14 (buff 32)))
+    (btc-amount uint)
+    (ai-account-allowed principal)
     (ai-account <aibtc-account>)
     (is-ai-account bool)
   )
   (let (
       (current-pool (var-get pool))
       (fixed-fee (get fee current-pool))
-      (btc-receiver (get btc-receiver current-pool))
-      (tx-buff (contract-call?
-        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
-        concat-wtx wtx witness-data
-      ))
+      (this-fee (if (<= btc-amount (get fee-threshold current-pool))
+                  (/ fixed-fee u2)
+                  fixed-fee
+                ))
+      (sbtc-amount-to-user (- btc-amount this-fee))
+      (available-sbtc (get available-sbtc current-pool))
+      (current-count (var-get processed-tx-count))
+      (max-deposit (get max-deposit current-pool))
+      (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
+      (ai-owner (get owner ai-config))
+    ;;   (btc-receiver (get btc-receiver current-pool))
+    ;;   (tx-buff (contract-call?
+    ;;     'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
+    ;;     concat-wtx wtx witness-data
+    ;;   ))
     )
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
     )
-    (match (contract-call?
-      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
-      was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
-      wproof witness-merkle-root witness-reserved-value ctx cproof
-    )
-      result (begin
-        (asserts! (is-none (map-get? processed-btc-txs result))
-          ERR_BTC_TX_ALREADY_USED
-        )
-        (match (get out (unwrap! (get-out-value wtx btc-receiver) ERR_NATIVE_FAILURE))
-          out (if (>= (get value out) MIN_SATS)
-            (let (
-                (btc-amount (get value out))
-                (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
-                (ai-account-allowed (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
-                (sbtc-amount-to-user (- btc-amount this-fee))
-                (available-sbtc (get available-sbtc current-pool))
-                (current-count (var-get processed-tx-count))
-                (max-deposit (get max-deposit current-pool))
-                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
-                (ai-owner (get owner ai-config))
-              )
-              (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
+    (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
+    (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
-              (asserts! (<= sbtc-amount-to-user max-deposit)
+    (asserts! (<= sbtc-amount-to-user max-deposit)
                 ERR_DEPOSIT_TOO_LARGE
               )
-              (map-set processed-btc-txs result {
-                btc-amount: btc-amount,
-                sbtc-amount: sbtc-amount-to-user,
-                stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
-                processed-at: burn-block-height,
-                tx-number: current-count,
-              })
-              (var-set processed-tx-count (+ current-count u1))
-              (var-set pool
+    (var-set processed-tx-count (+ current-count u1))
+    (var-set pool
                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
               )
-              (if is-ai-account
+    (if is-ai-account
                     (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender ai-account-allowed none)))
                     (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
                                                             sbtc-amount-to-user tx-sender ai-owner none))))
-              (print {
+    (print {
                 type: "process-btc-deposit",
                 btc-tx-id: result,
                 btc-amount: btc-amount,
                 sbtc-amount-to-user: sbtc-amount-to-user,
                 stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
-                btc-receiver: btc-receiver,
+                btc-receiver: "simulated",
                 when: burn-block-height,
                 processor: tx-sender,
                 is-ai-account: is-ai-account
               })
-              (ok true)
-            )
-            ERR_TX_VALUE_TOO_SMALL
-          )
-          ERR_TX_NOT_SENT_TO_POOL
-        )
-      )
-      error (err (* error u1000))
-    )
+    (ok true)
+    ;; (match (contract-call?
+    ;;   'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
+    ;;   was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
+    ;;   wproof witness-merkle-root witness-reserved-value ctx cproof
+    ;; )
+    ;;  result
+    ;;   (begin
+        ;; (asserts! (is-none (map-get? processed-btc-txs result))
+        ;;   ERR_BTC_TX_ALREADY_USED
+        ;; )
+    ;;    (match (get out (unwrap! (get-out-value wtx btc-receiver) ERR_NATIVE_FAILURE))
+    ;;      out (if (>= (get value out) MIN_SATS)
+
+            ;; (let 
+                ;; (
+                ;; (btc-amount (get value out))
+                ;; (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
+                ;; (ai-account-allowed (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+                ;; (this-fee (if (<= btc-amount (get fee-threshold current-pool))
+                ;;   (/ fixed-fee u2)
+                ;;   fixed-fee
+                ;; ))
+                ;; (sbtc-amount-to-user (- btc-amount this-fee))
+                ;; (available-sbtc (get available-sbtc current-pool))
+                ;; (current-count (var-get processed-tx-count))
+                ;; (max-deposit (get max-deposit current-pool))
+                ;; (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
+                ;; (ai-owner (get owner ai-config))
+                ;; )
+            ;;   (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
+            ;;   (asserts! (<= sbtc-amount-to-user available-sbtc)
+            ;;     ERR_INSUFFICIENT_POOL_BALANCE
+            ;;   )
+            ;;   (asserts! (<= sbtc-amount-to-user max-deposit)
+            ;;     ERR_DEPOSIT_TOO_LARGE
+            ;;   )
+            ;;   (map-set processed-btc-txs result {
+            ;;     btc-amount: btc-amount,
+            ;;     sbtc-amount: sbtc-amount-to-user,
+            ;;     stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
+            ;;     processed-at: burn-block-height,
+            ;;     tx-number: current-count,
+            ;;   })
+            ;;   (var-set processed-tx-count (+ current-count u1))
+            ;;   (var-set pool
+            ;;     (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+            ;;   )
+            ;;   (if is-ai-account
+            ;;         (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+            ;;                                                 sbtc-amount-to-user tx-sender ai-account-allowed none)))
+            ;;         (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
+            ;;                                                 sbtc-amount-to-user tx-sender ai-owner none))))
+            ;;   (print {
+            ;;     type: "process-btc-deposit",
+            ;;     btc-tx-id: result,
+            ;;     btc-amount: btc-amount,
+            ;;     sbtc-amount-to-user: sbtc-amount-to-user,
+            ;;     stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
+            ;;     btc-receiver: btc-receiver,
+            ;;     when: burn-block-height,
+            ;;     processor: tx-sender,
+            ;;     is-ai-account: is-ai-account
+            ;;   })
+            ;;   (ok true)
+            ;; )
+            ;; ERR_TX_VALUE_TOO_SMALL
+          ;; )
+          ;; ERR_TX_NOT_SENT_TO_POOL
+        ;; )
+    ;;  )
+    ;;   error (err (* error u1000))
+    ;; )
   )
 )
 
-(define-public (process-btc-deposit-legacy
-    (height uint)
-    (blockheader (buff 80))
-    (tx {
-      version: (buff 4),
-      ins: (list 50 {
-        outpoint: {
-          hash: (buff 32),
-          index: (buff 4),
-        },
-        scriptSig: (buff 1376),
-        sequence: (buff 4),
-      }),
-      outs: (list 50 {
-        value: (buff 8),
-        scriptPubKey: (buff 1376),
-      }),
-      locktime: (buff 4),
-    })
-    (proof {
-      tx-index: uint,
-      hashes: (list 12 (buff 32)),
-      tree-depth: uint,
-    })
-    (ai-account <aibtc-account>)
-    (is-ai-account bool)
-  )
-  (let (
-      (current-pool (var-get pool))
-      (fixed-fee (get fee current-pool))
-      (btc-receiver (get btc-receiver current-pool))
-      (tx-buff (contract-call?
-        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
-        tx
-      ))
-    )
-    (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
-      ERR_IN_COOLDOWN
-    )
-    (match (contract-call?
-      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
-      was-tx-mined-compact height tx-buff blockheader proof
-    )
-      result (begin
-        (asserts! (is-none (map-get? processed-btc-txs result))
-          ERR_BTC_TX_ALREADY_USED
-        )
-        (match (get out (unwrap! (get-out-value tx btc-receiver) ERR_NATIVE_FAILURE))
-          out (if (>= (get value out) MIN_SATS)
-            (let (
-                (btc-amount (get value out))
-                (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
-                (ai-account-allowed (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
-                (sbtc-amount-to-user (- btc-amount this-fee))
-                (available-sbtc (get available-sbtc current-pool))
-                (current-count (var-get processed-tx-count))
-                (max-deposit (get max-deposit current-pool))
-                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
-                (ai-owner (get owner ai-config))
-              )
-              (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
-                ERR_INSUFFICIENT_POOL_BALANCE
-              )
-              (asserts! (<= sbtc-amount-to-user max-deposit)
-                ERR_DEPOSIT_TOO_LARGE
-              )
-              (map-set processed-btc-txs result {
-                btc-amount: btc-amount,
-                sbtc-amount: sbtc-amount-to-user,
-                stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
-                processed-at: burn-block-height,
-                tx-number: current-count,
-              })
-              (var-set processed-tx-count (+ current-count u1))
-              (var-set pool
-                (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
-              )
-              (if is-ai-account
-                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                            sbtc-amount-to-user tx-sender ai-account-allowed none)))
-                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
-                                                            sbtc-amount-to-user tx-sender ai-owner none))))
-              (print {
-                type: "process-btc-deposit",
-                btc-tx-id: result,
-                btc-amount: btc-amount,
-                sbtc-amount-to-user: sbtc-amount-to-user,
-                stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
-                btc-receiver: btc-receiver,
-                when: burn-block-height,
-                processor: tx-sender,
-                is-ai-account: is-ai-account
-              })
-              (ok true)
-            )
-            ERR_TX_VALUE_TOO_SMALL
-          )
-          ERR_TX_NOT_SENT_TO_POOL
-        )
-      )
-      error (err (* error u1000))
-    )
-  )
-)
+;; (define-public (process-btc-deposit-legacy
+;;     (height uint)
+;;     (blockheader (buff 80))
+;;     (tx {
+;;       version: (buff 4),
+;;       ins: (list 50 {
+;;         outpoint: {
+;;           hash: (buff 32),
+;;           index: (buff 4),
+;;         },
+;;         scriptSig: (buff 1376),
+;;         sequence: (buff 4),
+;;       }),
+;;       outs: (list 50 {
+;;         value: (buff 8),
+;;         scriptPubKey: (buff 1376),
+;;       }),
+;;       locktime: (buff 4),
+;;     })
+;;     (proof {
+;;       tx-index: uint,
+;;       hashes: (list 12 (buff 32)),
+;;       tree-depth: uint,
+;;     })
+;;     (ai-account <aibtc-account>)
+;;     (is-ai-account bool)
+;;   )
+;;   (let (
+;;       (current-pool (var-get pool))
+;;       (fixed-fee (get fee current-pool))
+;;       (btc-receiver (get btc-receiver current-pool))
+;;       (tx-buff (contract-call?
+;;         'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
+;;         tx
+;;       ))
+;;     )
+;;     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
+;;       ERR_IN_COOLDOWN
+;;     )
+;;     (match (contract-call?
+;;       'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
+;;       was-tx-mined-compact height tx-buff blockheader proof
+;;     )
+;;       result (begin
+;;         (asserts! (is-none (map-get? processed-btc-txs result))
+;;           ERR_BTC_TX_ALREADY_USED
+;;         )
+;;         (match (get out (unwrap! (get-out-value tx btc-receiver) ERR_NATIVE_FAILURE))
+;;           out (if (>= (get value out) MIN_SATS)
+;;             (let (
+;;                 (btc-amount (get value out))
+;;                 (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
+;;                 (ai-account-allowed (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+;;                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
+;;                   (/ fixed-fee u2)
+;;                   fixed-fee
+;;                 ))
+;;                 (sbtc-amount-to-user (- btc-amount this-fee))
+;;                 (available-sbtc (get available-sbtc current-pool))
+;;                 (current-count (var-get processed-tx-count))
+;;                 (max-deposit (get max-deposit current-pool))
+;;                 (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
+;;                 (ai-owner (get owner ai-config))
+;;               )
+;;               (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
+;;               (asserts! (<= sbtc-amount-to-user available-sbtc)
+;;                 ERR_INSUFFICIENT_POOL_BALANCE
+;;               )
+;;               (asserts! (<= sbtc-amount-to-user max-deposit)
+;;                 ERR_DEPOSIT_TOO_LARGE
+;;               )
+;;               (map-set processed-btc-txs result {
+;;                 btc-amount: btc-amount,
+;;                 sbtc-amount: sbtc-amount-to-user,
+;;                 stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
+;;                 processed-at: burn-block-height,
+;;                 tx-number: current-count,
+;;               })
+;;               (var-set processed-tx-count (+ current-count u1))
+;;               (var-set pool
+;;                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+;;               )
+;;               (if is-ai-account
+;;                     (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+;;                                                             sbtc-amount-to-user tx-sender ai-account-allowed none)))
+;;                     (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
+;;                                                             sbtc-amount-to-user tx-sender ai-owner none))))
+;;               (print {
+;;                 type: "process-btc-deposit",
+;;                 btc-tx-id: result,
+;;                 btc-amount: btc-amount,
+;;                 sbtc-amount-to-user: sbtc-amount-to-user,
+;;                 stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
+;;                 btc-receiver: btc-receiver,
+;;                 when: burn-block-height,
+;;                 processor: tx-sender,
+;;                 is-ai-account: is-ai-account
+;;               })
+;;               (ok true)
+;;             )
+;;             ERR_TX_VALUE_TOO_SMALL
+;;           )
+;;           ERR_TX_NOT_SENT_TO_POOL
+;;         )
+;;       )
+;;       error (err (* error u1000))
+;;     )
+;;   )
+;; )
 
 ;; Process a BTC deposit to ai btc dao Tokens - by anyone
+    ;; (height uint)
+    ;; (wtx {
+    ;;   version: (buff 4),
+    ;;   ins: (list 50 {
+    ;;     outpoint: {
+    ;;       hash: (buff 32),
+    ;;       index: (buff 4),
+    ;;     },
+    ;;     scriptSig: (buff 1376),
+    ;;     sequence: (buff 4),
+    ;;   }),
+    ;;   outs: (list 50 {
+    ;;     value: (buff 8),
+    ;;     scriptPubKey: (buff 1376),
+    ;;   }),
+    ;;   locktime: (buff 4),
+    ;; })
+    ;; (witness-data (buff 1650))
+    ;; (header (buff 80))
+    ;; (tx-index uint)
+    ;; (tree-depth uint)
+    ;; (wproof (list 14 (buff 32)))
+    ;; (witness-merkle-root (buff 32))
+    ;; (witness-reserved-value (buff 32))
+    ;; (ctx (buff 4096))
+    ;; (cproof (list 14 (buff 32)))
 (define-public (swap-btc-to-aibtc
-    (height uint)
-    (wtx {
-      version: (buff 4),
-      ins: (list 50 {
-        outpoint: {
-          hash: (buff 32),
-          index: (buff 4),
-        },
-        scriptSig: (buff 1376),
-        sequence: (buff 4),
-      }),
-      outs: (list 50 {
-        value: (buff 8),
-        scriptPubKey: (buff 1376),
-      }),
-      locktime: (buff 4),
-    })
-    (witness-data (buff 1650))
-    (header (buff 80))
-    (tx-index uint)
-    (tree-depth uint)
-    (wproof (list 14 (buff 32)))
-    (witness-merkle-root (buff 32))
-    (witness-reserved-value (buff 32))
-    (ctx (buff 4096))
-    (cproof (list 14 (buff 32)))
+    (btc-amount uint)
+    (ai-account principal)
+    (min-amount-out uint)
+    (dex-id uint)
     (ft <faktory-token>)
     (ai-dex <faktory-dex>)
     (ai-pool <bitflow-pool>)
@@ -930,77 +977,52 @@
   (let (
       (current-pool (var-get pool))
       (fixed-fee (get fee current-pool))
-      (btc-receiver (get btc-receiver current-pool))
-      (tx-buff (contract-call?
-        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
-        concat-wtx wtx witness-data
-      ))
-    )
+      (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
+      (ai-ft-allowed (get ft-contract dex-info))
+      (this-fee (if (<= btc-amount (get fee-threshold current-pool))
+                  (/ fixed-fee u2)
+                  fixed-fee
+                ))
+      (sbtc-amount-to-user (- btc-amount this-fee)) 
+      (available-sbtc (get available-sbtc current-pool))
+      (current-count (var-get processed-tx-count))
+      (max-deposit (get max-deposit current-pool))
+      (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED)))
+    ;;   (btc-receiver (get btc-receiver current-pool))
+    ;;   (tx-buff (contract-call?
+    ;;     'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
+    ;;     concat-wtx wtx witness-data
+    ;;   ))
+    ;; )
     (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
     )
-    (match (contract-call?
-      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
-      was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
-      wproof witness-merkle-root witness-reserved-value ctx cproof
-    )
-      result (begin
-        (asserts! (is-none (map-get? processed-btc-txs result))
-          ERR_BTC_TX_ALREADY_USED
-        )
-        (match (get out (unwrap! (get-out-value wtx btc-receiver) ERR_NATIVE_FAILURE))
-          out (if (>= (get value out) MIN_SATS)
-            (let (
-                (btc-amount (get value out))
-                (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
-                (ai-account (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (min-amount-out (unwrap! (get a payload) ERR-ELEMENT-EXPECTED))
-                (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
-                (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
-                (ai-ft-allowed (get ft-contract dex-info))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
-                (sbtc-amount-to-user (- btc-amount this-fee))
-                (available-sbtc (get available-sbtc current-pool))
-                (current-count (var-get processed-tx-count))
-                (max-deposit (get max-deposit current-pool))
-                (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
-              )
-              (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
-              (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
+    (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
+    (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              
+    (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
-              (asserts! (<= sbtc-amount-to-user max-deposit)
+    (asserts! (<= sbtc-amount-to-user max-deposit)
                 ERR_DEPOSIT_TOO_LARGE
               )
-              (map-set processed-btc-txs result {
-                btc-amount: btc-amount,
-                sbtc-amount: sbtc-amount-to-user,
-                stx-receiver: ai-account,
-                processed-at: burn-block-height,
-                tx-number: current-count,
-              })
-              (var-set processed-tx-count (+ current-count u1))
-              (var-set pool
+    (var-set processed-tx-count (+ current-count u1))
+    (var-set pool
                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
               )
-              (print {
+    (print {
                 type: "process-btc-deposit",
                 btc-tx-id: result,
                 btc-amount: btc-amount,
                 sbtc-amount-to-user: sbtc-amount-to-user,
                 stx-receiver: ai-account,
-                btc-receiver: btc-receiver,
+                btc-receiver: "simulated",
                 when: burn-block-height,
                 processor: tx-sender,
                 min-amount-out: min-amount-out
-              })
-              (if bonded
-                  (let ((ai-pool-allowed (get pool-contract dex-info)))
+            })
+    (if bonded
+        (let ((ai-pool-allowed (get pool-contract dex-info)))
                     (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
                     (match (as-contract (contract-call? 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2 swap-x-for-y
                             ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
@@ -1009,7 +1031,7 @@
                     error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                       sbtc-amount-to-user tx-sender ai-account none))))
                     (ok true))
-                  (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
+        (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
                         (tokens-out (get tokens-out in-info))
                         (ai-dex-allowed (get dex-contract dex-info)))
                     (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
@@ -1021,153 +1043,239 @@
                                                       sbtc-amount-to-user tx-sender ai-account none))))
                     (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                     sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-              ) 
-            )
-            ERR_TX_VALUE_TOO_SMALL
-          )
-          ERR_TX_NOT_SENT_TO_POOL
-        )
-      )
-      error (err (* error u1000))
-    )
+                    (ok true)))  
   )
 )
 
-(define-public (swap-btc-to-aibtc-legacy
-    (height uint)
-    (blockheader (buff 80))
-    (tx {
-      version: (buff 4),
-      ins: (list 50 {
-        outpoint: {
-          hash: (buff 32),
-          index: (buff 4),
-        },
-        scriptSig: (buff 1376),
-        sequence: (buff 4),
-      }),
-      outs: (list 50 {
-        value: (buff 8),
-        scriptPubKey: (buff 1376),
-      }),
-      locktime: (buff 4),
-    })
-    (proof {
-      tx-index: uint,
-      hashes: (list 12 (buff 32)),
-      tree-depth: uint,
-    })
-    (ft <faktory-token>)
-    (ai-dex <faktory-dex>)
-    (ai-pool <bitflow-pool>)
-    (sbtc-token <faktory-token>)
-  )
-  (let (
-      (current-pool (var-get pool))
-      (fixed-fee (get fee current-pool))
-      (btc-receiver (get btc-receiver current-pool))
-      (tx-buff (contract-call?
-        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
-        tx
-      ))
-    )
-    (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
-    (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
-      ERR_IN_COOLDOWN
-    )
-    (match (contract-call?
-      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
-      was-tx-mined-compact height tx-buff blockheader proof
-    )
-      result (begin
-        (asserts! (is-none (map-get? processed-btc-txs result))
-          ERR_BTC_TX_ALREADY_USED
-        )
-        (match (get out (unwrap! (get-out-value tx btc-receiver) ERR_NATIVE_FAILURE))
-          out (if (>= (get value out) MIN_SATS)
-            (let (
-                (btc-amount (get value out))
-                (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
-                (ai-account (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (min-amount-out (unwrap! (get a payload) ERR-ELEMENT-EXPECTED))
-                (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
-                (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
-                (ai-ft-allowed (get ft-contract dex-info))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
-                (sbtc-amount-to-user (- btc-amount this-fee))
-                (available-sbtc (get available-sbtc current-pool))
-                (current-count (var-get processed-tx-count))
-                (max-deposit (get max-deposit current-pool))
-                (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
-              )
-              (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
-              (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
-                ERR_INSUFFICIENT_POOL_BALANCE
-              )
-              (asserts! (<= sbtc-amount-to-user max-deposit)
-                ERR_DEPOSIT_TOO_LARGE
-              )
-              (map-set processed-btc-txs result {
-                btc-amount: btc-amount,
-                sbtc-amount: sbtc-amount-to-user,
-                stx-receiver: ai-account,
-                processed-at: burn-block-height,
-                tx-number: current-count,
-              })
-              (var-set processed-tx-count (+ current-count u1))
-              (var-set pool
-                (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
-              )
-              (print {
-                type: "process-btc-deposit",
-                btc-tx-id: result,
-                btc-amount: btc-amount,
-                sbtc-amount-to-user: sbtc-amount-to-user,
-                stx-receiver: ai-account,
-                btc-receiver: btc-receiver,
-                when: burn-block-height,
-                processor: tx-sender,
-                min-amount-out: min-amount-out
-              })
-              (if bonded
-                  (let ((ai-pool-allowed (get pool-contract dex-info)))
-                    (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
-                    (match (as-contract (contract-call? 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2 swap-x-for-y
-                            ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
-                    swap-result (try! (as-contract (contract-call? ft transfer 
-                                                      swap-result tx-sender ai-account none))) 
-                    error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                      sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-                  (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
-                        (tokens-out (get tokens-out in-info))
-                        (ai-dex-allowed (get dex-contract dex-info)))
-                    (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
-                    (if (>= tokens-out min-amount-out)
-                    (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
-                      buy-result (try! (as-contract (contract-call? ft transfer 
-                                                      tokens-out tx-sender ai-account none))) 
-                      error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                      sbtc-amount-to-user tx-sender ai-account none))))
-                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                    sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-              ) 
-            )
-            ERR_TX_VALUE_TOO_SMALL
-          )
-          ERR_TX_NOT_SENT_TO_POOL
-        )
-      )
-      error (err (* error u1000))
-    )
-  )
-)
+    ;; (match (contract-call?
+    ;;   'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
+    ;;   was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
+    ;;   wproof witness-merkle-root witness-reserved-value ctx cproof
+    ;; )
+    ;;   result 
+    ;;   (begin
+        ;; (asserts! (is-none (map-get? processed-btc-txs result))
+        ;;   ERR_BTC_TX_ALREADY_USED
+        ;; )
+        ;; (match (get out (unwrap! (get-out-value wtx btc-receiver) ERR_NATIVE_FAILURE))
+        ;;   out (if (>= (get value out) MIN_SATS)
+            ;; (let (
+            ;;     (btc-amount (get value out))
+            ;;     (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
+                ;; (ai-account (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+                ;; (min-amount-out (unwrap! (get a payload) ERR-ELEMENT-EXPECTED))
+                ;; (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
+                ;; (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
+                ;; (ai-ft-allowed (get ft-contract dex-info))
+                ;; (this-fee (if (<= btc-amount (get fee-threshold current-pool))
+                ;;   (/ fixed-fee u2)
+                ;;   fixed-fee
+                ;; ))
+                ;; (sbtc-amount-to-user (- btc-amount this-fee))
+                ;; (available-sbtc (get available-sbtc current-pool))
+                ;; (current-count (var-get processed-tx-count))
+                ;; (max-deposit (get max-deposit current-pool))
+                ;; (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
+              ;;)
+            ;;   (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
+            ;;   (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              
+            ;;   (asserts! (<= sbtc-amount-to-user available-sbtc)
+            ;;     ERR_INSUFFICIENT_POOL_BALANCE
+            ;;   )
+            ;;   (asserts! (<= sbtc-amount-to-user max-deposit)
+            ;;     ERR_DEPOSIT_TOO_LARGE
+            ;;   )
+            ;;   (map-set processed-btc-txs result {
+            ;;     btc-amount: btc-amount,
+            ;;     sbtc-amount: sbtc-amount-to-user,
+            ;;     stx-receiver: ai-account,
+            ;;     processed-at: burn-block-height,
+            ;;     tx-number: current-count,
+            ;;   })
+            ;;   (var-set processed-tx-count (+ current-count u1))
+            ;;   (var-set pool
+            ;;     (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+            ;;   )
+            ;;   (print {
+            ;;     type: "process-btc-deposit",
+            ;;     btc-tx-id: result,
+            ;;     btc-amount: btc-amount,
+            ;;     sbtc-amount-to-user: sbtc-amount-to-user,
+            ;;     stx-receiver: ai-account,
+            ;;     btc-receiver: "simulated",
+            ;;     when: burn-block-height,
+            ;;     processor: tx-sender,
+            ;;     min-amount-out: min-amount-out
+            ;;   })
+            ;;   (if bonded
+            ;;       (let ((ai-pool-allowed (get pool-contract dex-info)))
+            ;;         (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
+            ;;         (match (as-contract (contract-call? 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2 swap-x-for-y
+            ;;                 ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
+            ;;         swap-result (try! (as-contract (contract-call? ft transfer 
+            ;;                                           swap-result tx-sender ai-account none))) 
+            ;;         error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+            ;;                                           sbtc-amount-to-user tx-sender ai-account none))))
+            ;;         (ok true))
+            ;;       (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
+            ;;             (tokens-out (get tokens-out in-info))
+            ;;             (ai-dex-allowed (get dex-contract dex-info)))
+            ;;         (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
+            ;;         (if (>= tokens-out min-amount-out)
+            ;;         (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
+            ;;           buy-result (try! (as-contract (contract-call? ft transfer 
+            ;;                                           tokens-out tx-sender ai-account none))) 
+            ;;           error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+            ;;                                           sbtc-amount-to-user tx-sender ai-account none))))
+            ;;         (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+            ;;                                         sbtc-amount-to-user tx-sender ai-account none))))
+            ;;         (ok true))
+        ;;       ) 
+        ;;     )
+        ;;     ERR_TX_VALUE_TOO_SMALL
+        ;;   )
+        ;;   ERR_TX_NOT_SENT_TO_POOL
+        ;; )
+    ;;   )
+    ;;   error (err (* error u1000))
+    ;; )
+;;   )
+;; )
+
+;; (define-public (swap-btc-to-aibtc-legacy
+;;     (height uint)
+;;     (blockheader (buff 80))
+;;     (tx {
+;;       version: (buff 4),
+;;       ins: (list 50 {
+;;         outpoint: {
+;;           hash: (buff 32),
+;;           index: (buff 4),
+;;         },
+;;         scriptSig: (buff 1376),
+;;         sequence: (buff 4),
+;;       }),
+;;       outs: (list 50 {
+;;         value: (buff 8),
+;;         scriptPubKey: (buff 1376),
+;;       }),
+;;       locktime: (buff 4),
+;;     })
+;;     (proof {
+;;       tx-index: uint,
+;;       hashes: (list 12 (buff 32)),
+;;       tree-depth: uint,
+;;     })
+;;     (ft <faktory-token>)
+;;     (ai-dex <faktory-dex>)
+;;     (ai-pool <bitflow-pool>)
+;;     (sbtc-token <faktory-token>)
+;;   )
+;;   (let (
+;;       (current-pool (var-get pool))
+;;       (fixed-fee (get fee current-pool))
+;;       (btc-receiver (get btc-receiver current-pool))
+;;       (tx-buff (contract-call?
+;;         'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
+;;         tx
+;;       ))
+;;     )
+;;     (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
+;;     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
+;;       ERR_IN_COOLDOWN
+;;     )
+;;     (match (contract-call?
+;;       'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
+;;       was-tx-mined-compact height tx-buff blockheader proof
+;;     )
+;;       result (begin
+;;         (asserts! (is-none (map-get? processed-btc-txs result))
+;;           ERR_BTC_TX_ALREADY_USED
+;;         )
+;;         (match (get out (unwrap! (get-out-value tx btc-receiver) ERR_NATIVE_FAILURE))
+;;           out (if (>= (get value out) MIN_SATS)
+;;             (let (
+;;                 (btc-amount (get value out))
+;;                 (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
+;;                 (ai-account (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+;;                 (min-amount-out (unwrap! (get a payload) ERR-ELEMENT-EXPECTED))
+;;                 (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
+;;                 (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
+;;                 (ai-ft-allowed (get ft-contract dex-info))
+;;                 (this-fee (if (<= btc-amount (get fee-threshold current-pool))
+;;                   (/ fixed-fee u2)
+;;                   fixed-fee
+;;                 ))
+;;                 (sbtc-amount-to-user (- btc-amount this-fee))
+;;                 (available-sbtc (get available-sbtc current-pool))
+;;                 (current-count (var-get processed-tx-count))
+;;                 (max-deposit (get max-deposit current-pool))
+;;                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
+;;               )
+;;               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
+;;               (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)
+;;               (asserts! (<= sbtc-amount-to-user available-sbtc)
+;;                 ERR_INSUFFICIENT_POOL_BALANCE
+;;               )
+;;               (asserts! (<= sbtc-amount-to-user max-deposit)
+;;                 ERR_DEPOSIT_TOO_LARGE
+;;               )
+;;               (map-set processed-btc-txs result {
+;;                 btc-amount: btc-amount,
+;;                 sbtc-amount: sbtc-amount-to-user,
+;;                 stx-receiver: ai-account,
+;;                 processed-at: burn-block-height,
+;;                 tx-number: current-count,
+;;               })
+;;               (var-set processed-tx-count (+ current-count u1))
+;;               (var-set pool
+;;                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+;;               )
+;;               (print {
+;;                 type: "process-btc-deposit",
+;;                 btc-tx-id: result,
+;;                 btc-amount: btc-amount,
+;;                 sbtc-amount-to-user: sbtc-amount-to-user,
+;;                 stx-receiver: ai-account,
+;;                 btc-receiver: btc-receiver,
+;;                 when: burn-block-height,
+;;                 processor: tx-sender,
+;;                 min-amount-out: min-amount-out
+;;               })
+;;               (if bonded
+;;                   (let ((ai-pool-allowed (get pool-contract dex-info)))
+;;                     (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
+;;                     (match (as-contract (contract-call? 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2 swap-x-for-y
+;;                             ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
+;;                     swap-result (try! (as-contract (contract-call? ft transfer 
+;;                                                       swap-result tx-sender ai-account none))) 
+;;                     error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+;;                                                       sbtc-amount-to-user tx-sender ai-account none))))
+;;                     (ok true))
+;;                   (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
+;;                         (tokens-out (get tokens-out in-info))
+;;                         (ai-dex-allowed (get dex-contract dex-info)))
+;;                     (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
+;;                     (if (>= tokens-out min-amount-out)
+;;                     (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
+;;                       buy-result (try! (as-contract (contract-call? ft transfer 
+;;                                                       tokens-out tx-sender ai-account none))) 
+;;                       error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+;;                                                       sbtc-amount-to-user tx-sender ai-account none))))
+;;                     (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+;;                                                     sbtc-amount-to-user tx-sender ai-account none))))
+;;                     (ok true))
+;;               ) 
+;;             )
+;;             ERR_TX_VALUE_TOO_SMALL
+;;           )
+;;           ERR_TX_NOT_SENT_TO_POOL
+;;         )
+;;       )
+;;       error (err (* error u1000))
+;;     )
+;;   )
+;; )
 
 ;; ---- Read-only functions ----
 (define-read-only (get-pool)
