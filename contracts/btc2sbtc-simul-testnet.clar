@@ -742,7 +742,7 @@
                                                             sbtc-amount-to-user tx-sender ai-owner none))))
     (print {
                 type: "process-btc-deposit",
-                btc-tx-id: result,
+                btc-tx-id: "simulated",
                 btc-amount: btc-amount,
                 sbtc-amount-to-user: sbtc-amount-to-user,
                 stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
@@ -1014,7 +1014,7 @@
               )
     (print {
                 type: "process-btc-deposit",
-                btc-tx-id: result,
+                btc-tx-id: "simulated",
                 btc-amount: btc-amount,
                 sbtc-amount-to-user: sbtc-amount-to-user,
                 stx-receiver: ai-account,

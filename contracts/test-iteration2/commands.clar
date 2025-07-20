@@ -97,3 +97,18 @@ Here's the complete flow to add an FT/DEX pair to the allowlist:
 6900000000
 script pub key
 0x00145f1dcae5b87013aca2248ad907b5e700bc5c766d
+
+
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet 
+          swap-btc-to-aibtc 
+          u269000 
+          'ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H.aibtc-acct-manually-deployed 
+          u0 
+          u1
+          'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory
+          'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory-dex
+          'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.xyk-pool-sbtc-fast12-v-1-1
+          'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token
+           )
+
+::advance_burn_chain_tip 8
