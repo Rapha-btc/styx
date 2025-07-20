@@ -1,39 +1,36 @@
 ;; Check if someone is an approver
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc is-approver tx-sender)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet is-approver tx-sender)
 
 ;; Propose a new allowlist pair (only approvers can do this)
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc propose-allowlist-dexes 'SP331D6T77PNS2YZXR03CDC4G3XN0SYBPV69D8JW5.beast1-faktory 'SP331D6T77PNS2YZXR03CDC4G3XN0SYBPV69D8JW5.beast1-faktory-dex 'SP331D6T77PNS2YZXR03CDC4G3XN0SYBPV69D8JW5.xyk-pool-sbtc-beast1-v-1-1)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet propose-allowlist-dexes 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory-dex 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.xyk-pool-sbtc-fast12-v-1-1)
 
 ;; Check if someone has signaled for a proposal
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc has-signaled u1 tx-sender)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet has-signaled u1 tx-sender)
 
 ;; Signal approval for a proposal (need proposal ID from propose step)
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc signal-allowlist-approval u1)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet signal-allowlist-approval u1)
 
 ;; Check if a DEX is allowed for a token
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc get-dex-allowed 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.fakfun-faktory)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet get-dex-allowed u1)
 
 ;; Get proposal details
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc get-allowlist-proposal u1)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet get-allowlist-proposal u1)
 
 ;; Check if swaps are paused
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc are-swaps-paused)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet are-swaps-paused)
 
 ;; Emergency stop (only approvers)
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc emergency-stop-swaps)
-
-;; Remove allowlist pair (only approvers)
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc remove-allowlist-pair 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.fakfun-faktory)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet emergency-stop-swaps)
 
 ;; Check pool status
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc get-pool)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet get-pool)
 
 ;; Check if pool is initialized
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc is-pool-initialized)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet is-pool-initialized)
 
-::set_tx_sender SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ
-::set_tx_sender SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW
-::set_tx_sender SPP3HM2E4JXGT26G1QRWQ2YTR5WT040S5NKXZYFC
+::set_tx_sender STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+::set_tx_sender ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6
+::set_tx_sender ST28MP1HQDJWQAFSQJN2HBAXBVP7H7THD1Y83JDEY
 
 not an approver:
 ::set_tx_sender ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP
@@ -95,3 +92,8 @@ Here's the complete flow to add an FT/DEX pair to the allowlist:
 - **7 days max** to get signals (`APPROVAL_WINDOW u1008`)
 - **Auto-execution** when 3rd signal is received
 - **One signal per approver** per proposal
+
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet initialize-pool u6900000000 0x00145f1dcae5b87013aca2248ad907b5e700bc5c766d)
+6900000000
+script pub key
+0x00145f1dcae5b87013aca2248ad907b5e700bc5c766d
