@@ -4,20 +4,10 @@ description = ''
 authors = []
 telemetry = false
 cache_dir = './.cache'
-requirements = [
-    {contract_id = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token", epoch = "3.1", clarity_version = 3},
-    {contract_id = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock", epoch = "3.1", clarity_version = 3}
 
-]
-
-[contracts.btc2sbtc]
-path = 'contracts/btc2sbtc.clar'
-clarity_version = 3
-epoch = 3.1
-
-
-[repl.analysis]
-passes = ['check_checker']
+# If using testnet
+[repl]
+network = "testnet"
 
 [repl.analysis.check_checker]
 strict = false
@@ -27,8 +17,40 @@ callee_filter = false
 
 [repl.remote_data]
 enabled = true
-api_url = 'https://api.hiro.so'
+api_url = 'https://api.testnet.hiro.so'  # For testnet
 
-[networks]
-mainnet = "https://api.hiro.so"
-testnet = "https://api.testnet.hiro.so"
+# All your requirements
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token'
+
+[[project.requirements]]
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21'
+
+[[project.requirements]]
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2'
+
+[[project.requirements]]
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2'
+
+[contracts.btc2sbtc-testnet]
+path = 'contracts/btc2sbtc-testnet.clar'
+clarity_version = 3
+epoch = 3.1
