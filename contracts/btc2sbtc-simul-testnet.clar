@@ -696,11 +696,12 @@
     ;; (witness-reserved-value (buff 32))
     ;; (ctx (buff 4096))
     ;; (cproof (list 14 (buff 32)))
+        ;; (ai-account-allowed principal)
+    ;; (ai-account <aibtc-account>)
+    ;; (is-ai-account bool)
 (define-public (process-btc-deposit
     (btc-amount uint)
-    (ai-account-allowed principal)
-    (ai-account <aibtc-account>)
-    (is-ai-account bool)
+    (ai-account (optional principal))
   )
   (let (
       (current-pool (var-get pool))
@@ -713,18 +714,11 @@
       (available-sbtc (get available-sbtc current-pool))
       (current-count (var-get processed-tx-count))
       (max-deposit (get max-deposit current-pool))
-      (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
-      (ai-owner (get owner ai-config))
-    ;;   (btc-receiver (get btc-receiver current-pool))
-    ;;   (tx-buff (contract-call?
-    ;;     'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
-    ;;     concat-wtx wtx witness-data
-    ;;   ))
+      (ai-account-or-user (default-to tx-sender ai-account))
     )
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
     )
-    (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
     (asserts! (<= sbtc-amount-to-user available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
@@ -735,21 +729,17 @@
     (var-set pool
                 (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
               )
-    (if is-ai-account
-                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                            sbtc-amount-to-user tx-sender ai-account-allowed none)))
-                    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer
-                                                            sbtc-amount-to-user tx-sender ai-owner none))))
+    (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+                                                            sbtc-amount-to-user tx-sender ai-account-or-user none)))
     (print {
                 type: "process-btc-deposit",
                 btc-tx-id: "simulated",
                 btc-amount: btc-amount,
                 sbtc-amount-to-user: sbtc-amount-to-user,
-                stx-receiver: (if is-ai-account ai-account-allowed ai-owner),
+                stx-receiver: ai-account-or-user,
                 btc-receiver: "simulated",
                 when: burn-block-height,
-                processor: tx-sender,
-                is-ai-account: is-ai-account
+                processor: tx-sender
               })
     (ok true)
   )
@@ -990,12 +980,6 @@
       (current-count (var-get processed-tx-count))
       (max-deposit (get max-deposit current-pool))
       (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED)))
-    ;;   (btc-receiver (get btc-receiver current-pool))
-    ;;   (tx-buff (contract-call?
-    ;;     'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
-    ;;     concat-wtx wtx witness-data
-    ;;   ))
-    ;; )
     (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
@@ -1415,6 +1399,101 @@
   )
 )
 
+(define-public (request-refund-user
+    (btc-refund-receiver (buff 40))
+    (height uint)
+    (wtx {
+      version: (buff 4),
+      ins: (list 8 {
+        outpoint: {
+          hash: (buff 32),
+          index: (buff 4),
+        },
+        scriptSig: (buff 256),
+        sequence: (buff 4),
+      }),
+      outs: (list 8 {
+        value: (buff 8),
+        scriptPubKey: (buff 128),
+      }),
+      locktime: (buff 4),
+    })
+    (witness-data (buff 1650))
+    (header (buff 80))
+    (tx-index uint)
+    (tree-depth uint)
+    (wproof (list 14 (buff 32)))
+    (witness-merkle-root (buff 32))
+    (witness-reserved-value (buff 32))
+    (ctx (buff 1024))
+    (cproof (list 14 (buff 32)))
+  )
+  (let (
+      (tx-buff (contract-call?
+        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1
+        concat-wtx wtx witness-data
+      ))
+      (refund-id (var-get next-refund-id))
+    )
+    (match (contract-call?
+      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
+      wproof witness-merkle-root witness-reserved-value ctx cproof
+    )
+      result (begin
+        (asserts! (is-none (map-get? processed-btc-txs result))
+          ERR_BTC_TX_ALREADY_USED
+        )
+        (match (get out
+          (unwrap! (get-out-value wtx (get btc-receiver (var-get pool)))
+            ERR_NATIVE_FAILURE
+          ))
+          out (if (>= (get value out) MIN_SATS)
+            (let (
+                (btc-amount (get value out))
+                (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
+                (ai-user (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+              )
+              (asserts! (is-eq tx-sender ai-user) ERR_INVALID_STX_RECEIVER)
+              (map-set processed-btc-txs result {
+                btc-amount: btc-amount,
+                sbtc-amount: u0,
+                stx-receiver: ai-user,
+                processed-at: burn-block-height,
+                tx-number: u0,
+              })
+              (map-set refund-requests refund-id {
+                btc-tx-id: result,
+                btc-tx-refund-id: none,
+                btc-amount: btc-amount,
+                btc-receiver: btc-refund-receiver,
+                stx-receiver: ai-user,
+                requested-at: burn-block-height,
+                done: false,
+              })
+              (var-set next-refund-id (+ refund-id u1))
+              (print {
+                type: "request-refund",
+                refund-id: refund-id,
+                btc-tx-id: result,
+                btc-amount: btc-amount,
+                btc-receiver: btc-refund-receiver,
+                stx-receiver: ai-user,
+                requested-at: burn-block-height,
+                done: false,
+              })
+              (ok refund-id)
+            )
+            ERR_TX_VALUE_TOO_SMALL
+          )
+          ERR_TX_NOT_SENT_TO_POOL
+        )
+      )
+      error (err (* error u1000))
+    )
+  )
+)
+
 ;; Process a refund by providing proof of BTC return transaction
 (define-public (process-refund
     (refund-id uint)
@@ -1581,6 +1660,97 @@
                 btc-amount: btc-amount,
                 btc-receiver: btc-refund-receiver,
                 stx-receiver: ai-owner,
+                requested-at: burn-block-height,
+                done: false,
+              })
+              (ok refund-id)
+            )
+            ERR_TX_VALUE_TOO_SMALL
+          )
+          ERR_TX_NOT_SENT_TO_POOL
+        )
+      )
+      error (err (* error u1000))
+    )
+  )
+)
+
+(define-public (request-refund-user-legacy
+    (btc-refund-receiver (buff 40))
+    (height uint)
+    (blockheader (buff 80))
+    (tx {
+      version: (buff 4),
+      ins: (list 8 {
+        outpoint: {
+          hash: (buff 32),
+          index: (buff 4),
+        },
+        scriptSig: (buff 256),
+        sequence: (buff 4),
+      }),
+      outs: (list 8 {
+        value: (buff 8),
+        scriptPubKey: (buff 128),
+      }),
+      locktime: (buff 4),
+    })
+    (proof {
+      tx-index: uint,
+      hashes: (list 12 (buff 32)),
+      tree-depth: uint,
+    })
+  )
+  (let (
+      (tx-buff (contract-call?
+        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
+        tx
+      ))
+      (refund-id (var-get next-refund-id))
+    )
+    (match (contract-call?
+      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      was-tx-mined-compact height tx-buff blockheader proof
+    )
+      result (begin
+        (asserts! (is-none (map-get? processed-btc-txs result))
+          ERR_BTC_TX_ALREADY_USED
+        )
+        (match (get out
+          (unwrap! (get-out-value tx (get btc-receiver (var-get pool)))
+            ERR_NATIVE_FAILURE
+          ))
+          out (if (>= (get value out) MIN_SATS)
+            (let (
+                (btc-amount (get value out))
+                (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
+                (ai-user (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
+              )
+              (asserts! (is-eq tx-sender ai-user) ERR_INVALID_STX_RECEIVER)
+              (map-set processed-btc-txs result {
+                btc-amount: btc-amount,
+                sbtc-amount: u0,
+                stx-receiver: ai-user,
+                processed-at: burn-block-height,
+                tx-number: u0,
+              })
+              (map-set refund-requests refund-id {
+                btc-tx-id: result,
+                btc-tx-refund-id: none,
+                btc-amount: btc-amount,
+                btc-receiver: btc-refund-receiver,
+                stx-receiver: ai-user,
+                requested-at: burn-block-height,
+                done: false,
+              })
+              (var-set next-refund-id (+ refund-id u1))
+              (print {
+                type: "request-refund",
+                refund-id: refund-id,
+                btc-tx-id: result,
+                btc-amount: btc-amount,
+                btc-receiver: btc-refund-receiver,
+                stx-receiver: ai-user,
                 requested-at: burn-block-height,
                 done: false,
               })
