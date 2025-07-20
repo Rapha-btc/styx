@@ -1318,13 +1318,13 @@
   )
   (let (
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1
         concat-wtx wtx witness-data
       ))
       (refund-id (var-get next-refund-id))
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-segwit-tx-mined-compact height tx-buff header tx-index tree-depth
       wproof witness-merkle-root witness-reserved-value ctx cproof
     )
@@ -1591,13 +1591,13 @@
   )
   (let (
       (tx-buff (contract-call?
-        'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
+        'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2 concat-tx
         tx
       ))
       (refund-id (var-get next-refund-id))
     )
     (match (contract-call?
-      'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7
+      'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
       was-tx-mined-compact height tx-buff blockheader proof
     )
       result (begin

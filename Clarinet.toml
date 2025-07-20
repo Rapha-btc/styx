@@ -51,6 +51,6 @@ contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2'
 contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2'
 
 [contracts.btc2sbtc-testnet]
-path = 'contracts/btc2sbtc-simul-testnet.clar'
+path = 'contracts/btc2sbtc-testnet.clar'
 clarity_version = 3
 epoch = 3.1
