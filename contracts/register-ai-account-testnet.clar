@@ -83,7 +83,6 @@
         signals: u1,
         executed: false
       })
-      (map-set account-proposals (contract-of account) proposal-id)
       
       (map-set proposal-signals { proposal-id: proposal-id, operator: tx-sender } true)
       (var-set next-proposal-id (+ proposal-id u1))
@@ -125,6 +124,7 @@
            (agent-proposed (get agent proposal)))
           ;; Register the AI account
           (map-set owner-ai-accounts owner-proposed ai-account-proposed)
+          (map-set account-proposals ai-account-proposed proposal-id)
           (map-set ai-account-owners ai-account-proposed {owner: owner-proposed, agent: agent-proposed})
           (map-set registration-proposals proposal-id
             (merge proposal { signals: new-signals, executed: true }) 
