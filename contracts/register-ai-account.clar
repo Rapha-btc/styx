@@ -2,6 +2,7 @@
 ;; Adapted from dex allowlist mechanism for operator-gated AI account registration
 
 (use-trait ai-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
+;; not deployed yet: SP29CK9990DQGE9RGTT1VEQTTYH8KY4E3JE5XP4EC.aibtc-agent-account-traits
 
 ;; Constants
 (define-constant SIGNALS_REQUIRED u2)  ;; Need 2 operators to approve
@@ -15,6 +16,8 @@
 (define-constant ERR_ALREADY_SIGNALED (err u805))
 (define-constant ERR_USER_ALREADY_REGISTERED (err u806))
 (define-constant ERR_ACCOUNT_ALREADY_REGISTERED (err u807))
+(define-constant ERR-GET-CONFIG (err u808))
+(define-constant ERR_INVALID_OWNER (err u809))
 
 ;; State variables
 (define-data-var next-proposal-id uint u1)
@@ -62,8 +65,12 @@
     (owner principal)
     (agent principal)
   )
-  (let ((proposal-id (var-get next-proposal-id)))
+  (let ((proposal-id (var-get next-proposal-id))
+        (ai-config (unwrap! (contract-call? account get-configuration) ERR-GET-CONFIG)) ;; get-config with proper trait config cf testnet
+        (ai-owner (get owner ai-config)))
     (asserts! (is-operator tx-sender) ERR_NOT_OPERATOR)
+    (asserts! (is-eq owner ai-owner) ERR_INVALID_OWNER)
+
     ;; Prevent double registration
     (asserts! (is-none (map-get? owner-ai-accounts owner)) ERR_USER_ALREADY_REGISTERED) ;; one registration per user forever
     (asserts! (is-none (map-get? account-proposals (contract-of account))) ERR_ACCOUNT_ALREADY_REGISTERED) ;; one registration per account forever
