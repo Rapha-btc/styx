@@ -1,7 +1,7 @@
 ;; AI Account Registry Contract
 ;; Adapted from dex allowlist mechanism for operator-gated AI account registration
 
-(use-trait ai-account 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock.aibtc-account)
+(use-trait ai-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account)
 
 ;; Constants
 (define-constant SIGNALS_REQUIRED u2)  ;; Need 2 operators to approve
@@ -22,11 +22,11 @@
 ;; ---- Operator list mechanism ----
 (define-read-only (is-operator (who principal))
   (or 
-    (is-eq who 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ)  ;; Operator 1
-    (is-eq who 'SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW)  ;; Operator 2  
-    (is-eq who 'SP3PEBWZ8PQK1M82MS4DVD3V9DE9ZS6F25S6PEF0R)  ;; Operator 3
-    ;; (is-eq who 'SPP3HM2E4JXGT26G1QRWQ2YTR5WT040S5NKXZYFC)  ;; Operator 4
-    ;; (is-eq who 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22)  ;; Operator 5
+    (is-eq who 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)  ;; Operator 1
+    (is-eq who 'ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6)  ;; Operator 2  
+    (is-eq who 'ST28MP1HQDJWQAFSQJN2HBAXBVP7H7THD1Y83JDEY)  ;; Operator 3
+    ;; (is-eq who 'ST1PE5V7DS1YPXGV1AZ80G7H6DNRHN79N23ZGE27N)  ;; Operator 4
+    ;; (is-eq who 'ST3SPSJDYGHF0ARGV1TNS0HX6JEP7T1J6849A7BB4)  ;; Operator 5
   )
 )
 

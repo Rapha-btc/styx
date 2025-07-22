@@ -5,6 +5,21 @@ authors = []
 telemetry = false
 cache_dir = './.cache'
 
+# If using testnet
+[repl]
+network = "testnet"
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
+
+[repl.remote_data]
+enabled = true
+api_url = 'https://api.testnet.hiro.so'  # For testnet
+
+# All your requirements
 [[project.requirements]]
 contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token'
 
@@ -12,7 +27,7 @@ contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token'
 contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1'
 
 [[project.requirements]]
-contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock'
+contract_id = 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits'
 
 [[project.requirements]]
 contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7'
@@ -34,24 +49,18 @@ contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2'
 
 [[project.requirements]]
 contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2'
-[contracts.btc2sbtc-testnet]
-path = 'contracts/btc2sbtc-testnet.clar'
-clarity_version = 3
-epoch = 3.1
 
 [contracts.register-ai-account-testnet]
 path = 'contracts/register-ai-account-testnet.clar'
 clarity_version = 3
 epoch = 3.1
-[repl.analysis]
-passes = []
 
-[repl.analysis.check_checker]
-strict = false
-trusted_sender = false
-trusted_caller = false
-callee_filter = false
+[contracts.btc2sbtc-testnet]
+path = 'contracts/btc2sbtc-testnet.clar'
+clarity_version = 3
+epoch = 3.1
 
-[repl.remote_data]
-enabled = true
-api_url = 'https://api.testnet.hiro.so'
+[contracts.btc2sbtc-simul-testnet]
+path = 'contracts/btc2sbtc-simul-testnet.clar'
+clarity_version = 3
+epoch = 3.1

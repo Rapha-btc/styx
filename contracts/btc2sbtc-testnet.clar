@@ -7,7 +7,7 @@
 (use-trait faktory-dex 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21.dex-trait) 
 (use-trait bitflow-pool 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2.xyk-pool-trait)
 
-(use-trait aibtc-account 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock.aibtc-account)
+(use-trait aibtc-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)
 
 (define-constant ERR-OUT-OF-BOUNDS u104)
 (define-constant ERR_TX_VALUE_TOO_SMALL (err u105))
@@ -1243,7 +1243,7 @@
                 (btc-amount (get value out))
                 (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                 (ai-account-allowed (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
+                (ai-config (unwrap! (contract-call? ai-account get-config) ERR-GET-CONFIG))
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
@@ -1519,7 +1519,7 @@
                 (btc-amount (get value out))
                 (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
                 (ai-account-allowed (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (ai-config (unwrap! (contract-call? ai-account get-configuration) ERR-GET-CONFIG))
+                (ai-config (unwrap! (contract-call? ai-account get-config) ERR-GET-CONFIG))
                 (ai-owner (get owner ai-config))
               )
               (asserts! (is-eq (contract-of ai-account) ai-account-allowed) ERR-WRONG-AI-ACCOUNT)
