@@ -1,7 +1,7 @@
 ;; AI Account Registry Contract
 ;; Adapted from dex allowlist mechanism for operator-gated AI account registration
 
-(use-trait ai-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
+(use-trait ai-account 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.aibtc-agent-account-traits-mock.aibtc-account)
 
 ;; Constants
 (define-constant SIGNALS_REQUIRED u2)  ;; Need 2 operators to approve
