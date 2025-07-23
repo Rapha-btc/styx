@@ -165,13 +165,13 @@
 )
 
 ;; For off chain attestators to get owner agent from ai-account
-(define-read-only (get-owners-by-ai-account (account <ai-account>))
-  (map-get? ai-account-owners (contract-of account))
+(define-read-only (get-owners-by-ai-account (account principal))
+  (map-get? ai-account-owners account)
 )
 
 ;; For off chain attestator to get proposal-id from ai-account
-(define-read-only (get-proposal-id-by-ai-account (account <ai-account>))
-  (map-get? account-proposals (contract-of account))
+(define-read-only (get-proposal-id-by-ai-account (account principal))
+  (map-get? account-proposals account)
 )
 
 ;; ---- Read-only functions ----
