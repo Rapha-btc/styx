@@ -105,11 +105,17 @@
   (let (
     (proposal (unwrap! (map-get? registration-proposals proposal-id) ERR_PROPOSAL_NOT_FOUND))
     (current-signals (get signals proposal))
+    (owner-proposed (get owner proposal))
+    (ai-account-proposed (get ai-account proposal))
   )
     (asserts! (is-operator tx-sender) ERR_NOT_OPERATOR)
     (asserts! (not (get executed proposal)) ERR_PROPOSAL_EXECUTED)
     (asserts! (<= burn-block-height (+ (get proposed-at proposal) APPROVAL_WINDOW)) ERR_PROPOSAL_EXPIRED)
     (asserts! (is-none (map-get? proposal-signals { proposal-id: proposal-id, operator: tx-sender })) ERR_ALREADY_SIGNALED)
+    
+    ;; Prevent double registration
+    (asserts! (is-none (map-get? owner-ai-accounts owner-proposed)) ERR_USER_ALREADY_REGISTERED) ;; one registration per user forever
+    (asserts! (is-none (map-get? account-proposals ai-account-proposed)) ERR_ACCOUNT_ALREADY_REGISTERED) ;; one registration per account forever
     
     (let ((new-signals (+ current-signals u1)))
       (map-set proposal-signals { proposal-id: proposal-id, operator: tx-sender } true)
@@ -120,9 +126,7 @@
       ;; Auto-execute if we have enough signals (2 operators)
       (if (>= new-signals SIGNALS_REQUIRED)
         (let 
-          ((ai-account-proposed (get ai-account proposal))
-           (owner-proposed (get owner proposal))
-           (agent-proposed (get agent proposal)))
+          ((agent-proposed (get agent proposal)))
           ;; Register the AI account
           (map-set owner-ai-accounts owner-proposed ai-account-proposed)
           (map-set account-proposals ai-account-proposed proposal-id)
