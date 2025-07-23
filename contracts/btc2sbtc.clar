@@ -49,7 +49,7 @@
 (define-constant APPROVAL_WINDOW u1008) ;; 7 days * 144 blocks/day
 (define-constant SIGNALS_REQUIRED u3)   ;; 3 out of 5
 
-(define-constant OPERATOR_STYX 'SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW) ;; only 1 pool per operator else double spending 
+(define-constant OPERATOR_STYX 'SP33JZDSJ6B4WEGE0CQFEXGWB3QGMZ225HTV2S76E) ;; only 1 pool per operator else double spending 
 (define-constant SBTC_CONTRACT 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token)
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000)
