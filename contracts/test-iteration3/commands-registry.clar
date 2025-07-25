@@ -32,13 +32,13 @@ not an approver:
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet get-registration-proposal u1)
 
 ;; Check if user already registered
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet is-user-registered 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet is-user-registered 'ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H)
 ```
 
 ### **4. Signal Approval (Second Operator)**
 ```clarity
 ;; Switch to second operator and signal
-::set_tx_sender SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW
+::set_tx_sender STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet signal-registration-approval u1)
 ```
 
@@ -46,11 +46,17 @@ not an approver:
 ```clarity
 ;; Check if AI account is registered
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet 
-  get-ai-account-by-owner 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE)
+  get-ai-account-by-owner 'ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H)
 
 ;; Check proposal ID lookup
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet 
-  get-proposal-id-by-ai-account 'ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE.test-ai-account)
+  get-proposal-id-by-ai-account 'ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H.aibtc-acct-manually-deployed)
+
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet 
+  get-owners-by-ai-account 'ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H.aibtc-acct-manually-deployed)
+
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.register-ai-account-testnet 
+  get-registration-proposal u1)
 ```
 
 ### **6. Test Error Cases**

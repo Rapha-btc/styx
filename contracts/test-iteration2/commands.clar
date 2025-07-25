@@ -2,7 +2,10 @@
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet is-approver tx-sender)
 
 ;; Propose a new allowlist pair (only approvers can do this)
-(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet propose-allowlist-dexes 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory-dex 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.xyk-pool-sbtc-fast12-v-1-1)
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet propose-allowlist-dexes 
+    'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory 
+    'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.fast12-faktory-dex 
+    'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.xyk-pool-sbtc-fast12-v-1-1)
 
 ;; Check if someone has signaled for a proposal
 (contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet has-signaled u1 tx-sender)
@@ -112,3 +115,14 @@ script pub key
            )
 
 ::advance_burn_chain_tip 8
+
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet
+            process-btc-deposit
+            u100000
+            none)
+
+(contract-call? 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.btc2sbtc-testnet
+            process-btc-deposit
+            u100000
+            (some 'ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H.aibtc-acct-manually-deployed)
+            )
