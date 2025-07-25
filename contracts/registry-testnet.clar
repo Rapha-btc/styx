@@ -1,11 +1,11 @@
 ;; Simplified AI Account Registry Contract
 ;; Self-registration with attestation levels
 
-(use-trait ai-account 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.aibtc-agent-account-traits-mock.aibtc-account)
+(use-trait ai-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)
 
 ;; Constants
-(define-constant ATTESTOR_DEPLOYER 'SP6SA6BTPNN5WDAWQ7GWJF1T5E2KWY01K9SZDBJQ)  ;; Our backend deployer
-(define-constant ATTESTOR 'SP3VES970E3ZGHQEZ69R8PY62VP3R0C8CTQ8DAMQW)      ;; Primary attestor
+(define-constant ATTESTOR_DEPLOYER 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)  ;; Our backend deployer
+(define-constant ATTESTOR 'ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6)      ;; Primary attestor
 
 ;; Errors
 (define-constant ERR_NOT_CONTRACT_CALL (err u801))
@@ -46,7 +46,7 @@
 (define-public (register-ai-account (account <ai-account>))
   (let (
     (ai-account-address (contract-of account))
-    (ai-config (unwrap! (contract-call? account get-configuration) ERR_GET_CONFIG_FAILED))
+    (ai-config (unwrap! (contract-call? account get-config) ERR_GET_CONFIG_FAILED))
     (owner (get owner ai-config))
     (agent (get agent ai-config))
   )
