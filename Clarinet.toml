@@ -70,3 +70,8 @@ epoch = 3.1
 path = 'contracts/registry-testnet.clar'
 clarity_version = 3
 epoch = 3.1
+
+[contracts.aibtc-acct-manually-deployed]
+path = 'contracts/aibtc-acct-manually-deployed.clar'
+clarity_version = 3
+epoch = 3.1

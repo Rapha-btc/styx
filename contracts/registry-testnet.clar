@@ -4,7 +4,7 @@
 (use-trait ai-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)
 
 ;; Constants
-(define-constant ATTESTOR_DEPLOYER 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)  ;; Our backend deployer
+(define-constant ATTESTOR_DEPLOYER 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM) ;; 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)  ;; Our backend deployer
 (define-constant ATTESTOR 'ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6)      ;; Primary attestor
 
 ;; Errors
@@ -35,11 +35,13 @@
   bool
 )
 
-;; ---- Self-Registration Function ----
-(define-public (auto-register-ai-account (account <ai-account>))
-  (begin
-    (asserts! (is-eq contract-caller (contract-of account)) ERR_NOT_CONTRACT_CALL)
-    (register-ai-account account)
+;; Auto-register (called from AI account with as-contract)
+(define-public (auto-register-ai-account (owner principal) (agent principal))
+  (begin  
+    (asserts! (is-eq tx-sender ATTESTOR_DEPLOYER) ERR_NOT_AUTHORIZED_DEPLOYER)
+    (asserts! (is-none (map-get? ai-account-registry contract-caller)) ERR_ALREADY_REGISTERED) ;; Prevent double registration
+    (asserts! (is-none (map-get? owner-to-account owner)) ERR_ALREADY_REGISTERED)
+    (do-register-account contract-caller owner agent)
   )
 )
 
@@ -51,25 +53,28 @@
     (agent (get agent ai-config))
   )
     (asserts! (is-eq tx-sender ATTESTOR_DEPLOYER) ERR_NOT_AUTHORIZED_DEPLOYER)
-    (asserts! (is-none (map-get? ai-account-registry ai-account-address)) ERR_ALREADY_REGISTERED)
+    (asserts! (is-none (map-get? ai-account-registry ai-account-address)) ERR_ALREADY_REGISTERED) ;; Prevent double registration
     (asserts! (is-none (map-get? owner-to-account owner)) ERR_ALREADY_REGISTERED)
-    
-    (map-insert ai-account-registry ai-account-address {
+    (do-register-account ai-account-address owner agent)
+  )
+)
+
+(define-private (do-register-account (account principal) (owner principal) (agent principal))
+  (begin
+    (map-insert ai-account-registry account {
       owner: owner,
       agent: agent,
       attestation-level: u1
     })
-    (map-insert owner-to-account owner ai-account-address)
-    
+    (map-insert owner-to-account owner account)
     (print {
       type: "ai-account-registered",
-      account: ai-account-address,
+      account: account,
       owner: owner,
       agent: agent,
       attestation-level: u1
     })
-    
-    (ok ai-account-address)
+    (ok account)
   )
 )
 
