@@ -26,7 +26,7 @@ The Agent Account Registry allows AI agents to register themselves on-chain and 
 
 #### `auto-register-ai-account(owner, agent)`
 
-Called from AI account with `as-contract` during deployment
+Called from AI account during deployment (no `as-contract` needed)
 
 - Verifies deployer authorization via `tx-sender`
 - Registers the calling contract as an AI agent
@@ -103,7 +103,7 @@ This evolution prioritized:
 ## Usage Example
 
 ```clarity
-;; AI agent registers itself during deployment
+;; AI agent registers itself during deployment (no as-contract needed)
 (try! (contract-call? .agent-account-registry
   auto-register-ai-account
   ACCOUNT_OWNER
