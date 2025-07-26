@@ -129,6 +129,11 @@ While some trust challenges are inherent to AI systems, this registry provides:
 - **Auditability**: Contract code defines exact rules
 - **Upgradeability**: Can migrate to new versions as AI governance evolves
 
+## Development Status
+
+⚠️ **Enhanced versions are now being implemented at**:
+https://github.com/aibtcdev/aibtcdev-daos/blob/feat/agent-account-registration/contracts/external/agent-account-registry.clar
+
 ## Deployment
 
 - **Testnet**: `STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.registry`
