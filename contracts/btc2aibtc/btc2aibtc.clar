@@ -4,7 +4,7 @@
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait) 
-(use-trait faktory-pre 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.pre-agent-faktory-trait.prelaunch-trait)
+(use-trait faktory-pre 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.prelaunch-faktory-trait.prelaunch-trait)
 (use-trait faktory-dex 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.faktory-dex-trait.dex-trait) 
 (use-trait bitflow-pool 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-2.xyk-pool-trait)
 
@@ -1026,7 +1026,7 @@
                             (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
-                                          (if user-change > u0 
+                                          (if (> user-change u0)
                                           (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                         user-change tx-sender ai-account none))))
                                           (ok true))
@@ -1180,7 +1180,7 @@
                             (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
-                                          (if user-change > u0 
+                                          (if (> user-change u0) 
                                           (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                         user-change tx-sender ai-account none))))
                                           (ok true))

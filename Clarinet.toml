@@ -8,10 +8,27 @@ cache_dir = '.cache'
 [[project.requirements]]
 contract_id = 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits'
 
-[contracts.agent-acct-registry]
-path = 'contracts/agent-acct-registry.clar'
+[[project.requirements]]
+contract_id = 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token'
+
+[[project.requirements]]
+contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7'
+
+[[project.requirements]]
+contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2'
+
+[[project.requirements]]
+contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2'
+
+[[project.requirements]]
+contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1'
+
+[[project.requirements]]
+contract_id = 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.prelaunch-faktory-trait'
+[contracts.btc2aibtc]
+path = 'contracts/btc2aibtc/btc2aibtc.clar'
 clarity_version = 3
-epoch = 3.1
+epoch = '3.1'
 [repl.analysis]
 passes = []
 
