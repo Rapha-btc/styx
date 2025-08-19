@@ -1027,12 +1027,15 @@
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
                                           (if (> user-change u0)
-                                          (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+                                              (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                         user-change tx-sender ai-account none)))
-                                            true)
+                                              true
+                                          )
                                           (ok true))
-                                error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                                error (begin
+                                        (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none)))
+                                      (ok true)))
                         )
                     )
                 ) 
@@ -1119,7 +1122,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (market-open (unwrap! (contract-call? ai-pre is-market-open) ERR-GET-MARKET))
                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
-                (ai-account (unwrap! (contract-call? 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
+                (ai-account (unwrap! (contract-call? .agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
               )
               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
               (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              
@@ -1181,12 +1184,16 @@
                             (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
-                                          (if (> user-change u0) 
-                                          (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                        user-change tx-sender ai-account none))))
+                                          (if (> user-change u0)
+                                              (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+                                                        user-change tx-sender ai-account none)))
+                                              true
+                                          )
                                           (ok true))
-                                error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                                error (begin
+                                        (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none)))
+                                      (ok true)))
                         )
                     )
                 ) 
