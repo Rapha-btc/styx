@@ -8,6 +8,8 @@ The BTC2AIBTC bridge enables one-way Bitcoin transactions that are automatically
 
 ## How It Works
 
+We've successfully integrated pre-launch seat purchasing functionality that allows users to send Bitcoin transactions and automatically receive seats in AI token pre-launches on the Stacks blockchain, with proper fallback handling for different market states. The cross-chain bridge now seamlessly handles three scenarios: swapping through liquidity pools when tokens are bonded, purchasing directly from the bonding curve when markets are open, and buying pre-launch seats when projects are still in their initial phase, all while maintaining consistent error handling and fund safety.
+
 ### Transaction Flow
 
 1. **Send Bitcoin** to the pool's Bitcoin address with encoded payload
