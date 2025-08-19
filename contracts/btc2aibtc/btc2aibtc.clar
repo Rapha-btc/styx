@@ -47,6 +47,7 @@
 (define-constant ERR-WRONG-SBTC (err u155)) 
 (define-constant ERR-NO-AI-ACCOUNT (err u156))
 (define-constant ERR-GET-MARKET (err u157))
+(define-constant ERR-WRONG-PRE (err u158))
 
 (define-constant APPROVAL_WINDOW u1008) 
 (define-constant SIGNALS_REQUIRED u2)   
@@ -60,6 +61,9 @@
 (define-constant WITHDRAWAL_COOLOFF u144)
 
 (define-constant PRECISION u1000000)
+
+(define-constant PRICE-PER-SEAT u20000)
+
 
 ;; ---- Data structures ----
 (define-data-var current-operator principal OPERATOR_STYX)
@@ -993,30 +997,44 @@
                 processor: tx-sender,
                 min-amount-out: min-amount-out
               })
-              (if bonded
-                  (let ((ai-pool-allowed (get pool-contract dex-info)))
-                    (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
-                    (match (as-contract (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
-                            ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
-                    swap-result (try! (as-contract (contract-call? ft transfer 
-                                                      swap-result tx-sender ai-account none))) 
-                    error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                      sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-                  (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
-                        (tokens-out (get tokens-out in-info))
-                        (ai-dex-allowed (get dex-contract dex-info)))
-                    (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
-                    (if (>= tokens-out min-amount-out)
-                    (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
-                      buy-result (try! (as-contract (contract-call? ft transfer 
-                                                      tokens-out tx-sender ai-account none))) 
-                      error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                      sbtc-amount-to-user tx-sender ai-account none))))
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                    sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-              ) 
+                (if bonded
+                    (let ((ai-pool-allowed (get pool-contract dex-info)))
+                        (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
+                        (match (as-contract (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
+                                ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
+                        swap-result (try! (as-contract (contract-call? ft transfer 
+                                                        swap-result tx-sender ai-account none))) 
+                        error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                        (ok true))
+                    (if market-open
+                        (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
+                                (tokens-out (get tokens-out in-info))
+                                (ai-dex-allowed (get dex-contract dex-info)))
+                            (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
+                            (if (>= tokens-out min-amount-out)
+                            (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
+                            buy-result (try! (as-contract (contract-call? ft transfer 
+                                                            tokens-out tx-sender ai-account none))) 
+                            error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            sbtc-amount-to-user tx-sender ai-account none))))
+                            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            sbtc-amount-to-user tx-sender ai-account none))))
+                            (ok true))
+                        (let ((ai-pre-allowed (get pre-contract dex-info))
+                            (max-seat (/ sbtc-amount-to-user PRICE-PER-SEAT)))
+                            (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
+                            (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
+                                actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
+                                          (if user-change > u0 
+                                          (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        user-change tx-sender ai-account none))))
+                                          (ok true))
+                                error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                        )
+                    )
+                ) 
             )
             ERR_TX_VALUE_TOO_SMALL
           )
@@ -1055,6 +1073,7 @@
     })
     (ft <faktory-token>)
     (ai-dex <faktory-dex>)
+    (ai-pre <faktory-pre>)
     (ai-pool <bitflow-pool>)
     (sbtc-token <faktory-token>)
   )
@@ -1097,6 +1116,7 @@
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
+                (market-open (unwrap! (contract-call? ai-pre is-market-open) ERR-GET-MARKET))
                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
                 (ai-account (unwrap! (contract-call? 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
               )
@@ -1131,30 +1151,44 @@
                 processor: tx-sender,
                 min-amount-out: min-amount-out
               })
-              (if bonded
-                  (let ((ai-pool-allowed (get pool-contract dex-info)))
-                    (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
-                    (match (as-contract (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
-                            ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
-                    swap-result (try! (as-contract (contract-call? ft transfer 
-                                                      swap-result tx-sender ai-account none))) 
-                    error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                      sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-                  (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
-                        (tokens-out (get tokens-out in-info))
-                        (ai-dex-allowed (get dex-contract dex-info)))
-                    (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
-                    (if (>= tokens-out min-amount-out)
-                    (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
-                      buy-result (try! (as-contract (contract-call? ft transfer 
-                                                      tokens-out tx-sender ai-account none))) 
-                      error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                      sbtc-amount-to-user tx-sender ai-account none))))
-                    (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                    sbtc-amount-to-user tx-sender ai-account none))))
-                    (ok true))
-              ) 
+                (if bonded
+                    (let ((ai-pool-allowed (get pool-contract dex-info)))
+                        (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
+                        (match (as-contract (contract-call? 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-core-v-1-2 swap-x-for-y
+                                ai-pool sbtc-token ft sbtc-amount-to-user min-amount-out))
+                        swap-result (try! (as-contract (contract-call? ft transfer 
+                                                        swap-result tx-sender ai-account none))) 
+                        error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                        (ok true))
+                    (if market-open
+                        (let ((in-info (unwrap! (contract-call? ai-dex get-in sbtc-amount-to-user) ERR-GET-QUOTE))
+                                (tokens-out (get tokens-out in-info))
+                                (ai-dex-allowed (get dex-contract dex-info)))
+                            (asserts! (is-eq (contract-of ai-dex) ai-dex-allowed) ERR-WRONG-DEX)
+                            (if (>= tokens-out min-amount-out)
+                            (match (as-contract (contract-call? ai-dex buy ft sbtc-amount-to-user))
+                            buy-result (try! (as-contract (contract-call? ft transfer 
+                                                            tokens-out tx-sender ai-account none))) 
+                            error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            sbtc-amount-to-user tx-sender ai-account none))))
+                            (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            sbtc-amount-to-user tx-sender ai-account none))))
+                            (ok true))
+                        (let ((ai-pre-allowed (get pre-contract dex-info))
+                            (max-seat (/ sbtc-amount-to-user PRICE-PER-SEAT)))
+                            (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
+                            (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
+                                actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
+                                          (if user-change > u0 
+                                          (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        user-change tx-sender ai-account none))))
+                                          (ok true))
+                                error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                        )
+                    )
+                ) 
             )
             ERR_TX_VALUE_TOO_SMALL
           )

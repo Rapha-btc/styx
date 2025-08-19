@@ -194,7 +194,7 @@
                             seat-holders: (var-get seat-holders),
                             distribution-height: (var-get distribution-height) 
                             })
-                        (ok true))
+                        (ok actual-seats))
                 error (err error))))
 
     ;; Refund logic only for Period 1 expired and Period 2 not started
