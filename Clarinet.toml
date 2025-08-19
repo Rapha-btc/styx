@@ -3,30 +3,50 @@ name = 'styx'
 description = ''
 authors = []
 telemetry = false
-cache_dir = '.cache'
+cache_dir = './.cache'
 
 [[project.requirements]]
-contract_id = 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits'
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token'
 
 [[project.requirements]]
-contract_id = 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token'
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1'
 
 [[project.requirements]]
-contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.clarity-bitcoin-lib-v7'
+contract_id = 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits'
 
 [[project.requirements]]
-contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2'
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7'
 
 [[project.requirements]]
-contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2'
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2'
 
 [[project.requirements]]
-contract_id = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v1'
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2'
 
 [[project.requirements]]
-contract_id = 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.prelaunch-faktory-trait'
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1'
+
+[[project.requirements]]
+contract_id = 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21'
+
+[[project.requirements]]
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2'
+
+[[project.requirements]]
+contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2'
+
+[contracts.agent-account-registry]
+path = 'contracts/agent-account-registry.clar'
+clarity_version = 3
+epoch = '3.1'
+
 [contracts.btc2aibtc]
-path = 'contracts/btc2aibtc/btc2aibtc.clar'
+path = 'contracts/btc2aibtc/btc2aibtctestnet.clar'
+clarity_version = 3
+epoch = '3.1'
+
+[contracts.pre-trait-final2]
+path = 'contracts/btc2aibtc/pre-trait-final2.clar'
 clarity_version = 3
 epoch = '3.1'
 [repl.analysis]
@@ -39,5 +59,5 @@ trusted_caller = false
 callee_filter = false
 
 [repl.remote_data]
-enabled = false
-api_url = 'https://api.hiro.so'
+enabled = true
+api_url = 'https://api.testnet.hiro.so'

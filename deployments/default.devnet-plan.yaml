@@ -1,0 +1,122 @@
+---
+id: 0
+name: Devnet deployment
+network: devnet
+stacks-node: "http://localhost:20443"
+bitcoin-node: "http://devnet:devnet@localhost:18443"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - requirement-publish:
+            contract-id: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 8390
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.nft-trait
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 4670
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.nft-trait.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.sip-010-trait-ft-standard
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 8390
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.sip-010-trait-ft-standard.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 18560
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 369690
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 39620
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 41750
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 41880
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 329170
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 11330
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 23020
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-dao-traits
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 40470
+            path: "./.cache/requirements/ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-dao-traits.clar"
+            clarity-version: 3
+        - requirement-publish:
+            contract-id: ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 25460
+            path: "./.cache/requirements/ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.clar"
+            clarity-version: 3
+        - contract-publish:
+            contract-name: btc2aibtc
+            expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 569670
+            path: contracts/btc2aibtc/btc2aibtc.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.1"
