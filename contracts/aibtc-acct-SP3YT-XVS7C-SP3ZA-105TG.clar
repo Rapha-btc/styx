@@ -519,4 +519,7 @@
       agentPermissions: (get-agent-permissions),
     },
   })
+  ;; register our ai account
+  (try! (contract-call? .registry-testnet auto-register-ai-account ACCOUNT_OWNER ACCOUNT_AGENT))
+  (ok true)
 )
