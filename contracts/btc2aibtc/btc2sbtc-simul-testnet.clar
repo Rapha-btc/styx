@@ -1,4 +1,4 @@
-;;  - new pool dedicated to ai btc
+;; Fee distribution and Prelaunch support - new pool dedicated to ai btc
 ;; STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.btc2sbtc
 ;; Btc2Sbtc.com Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
