@@ -4,7 +4,7 @@
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1.sip-010-trait) 
-(use-trait faktory-pre 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.prelaunch-faktory-trait)
+(use-trait faktory-pre 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.prelaunch-faktory-trait.prelaunch-trait)
 (use-trait faktory-dex 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21.dex-trait) 
 (use-trait bitflow-pool 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2.xyk-pool-trait)
 
