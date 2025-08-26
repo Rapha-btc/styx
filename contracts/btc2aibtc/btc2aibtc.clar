@@ -53,6 +53,7 @@
 (define-constant SIGNALS_REQUIRED u2)   
 
 (define-constant OPERATOR_STYX 'SP3H6XX8W8MC3DXFN7H4D95X993D29XW5RGEJRXW2) ;; only 1 pool per operator else double spending 
+(define-constant SERVICE_STYX 'SP3H6XX8W8MC3DXFN7H4D95X993D29XW5RGEJRXW2) ;; amend it for mainnet Rafa
 (define-constant SBTC_CONTRACT 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token)
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000)
@@ -77,8 +78,7 @@
   last-updated: uint,
   withdrawal-signaled-at: (optional uint),
   max-deposit: uint,
-  fee: uint,
-  fee-threshold: uint,
+  min-fee: uint,
   add-liq-signaled-at: (optional uint),
   set-param-signaled-at: (optional uint),
 } {
@@ -88,8 +88,7 @@
   last-updated: u0,
   withdrawal-signaled-at: none,
   max-deposit: u1000000,
-  fee: u6000,
-  fee-threshold: u203000,
+  min-fee: u3000,
   add-liq-signaled-at: none,
   set-param-signaled-at: none,
 })
@@ -468,8 +467,7 @@
 
 (define-public (set-params
     (new-max-deposit uint)
-    (fee uint)
-    (fee-threshold uint)
+    (min-fee uint)
   )
   (let (
       (current-pool (var-get pool))
@@ -477,23 +475,21 @@
     )
     (asserts! (not (is-eq signaled-at u0)) ERR_NOT_SIGNALED)
     (asserts! (> burn-block-height (+ signaled-at COOLDOWN)) ERR_IN_COOLDOWN)
-    (asserts! (<= fee FIXED_FEE) ERR_FEE_TOO_LARGE)
+    (asserts! (<= min-fee FIXED_FEE) ERR_FEE_TOO_LARGE)
     (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
     (asserts! (> new-max-deposit MIN_SATS) ERR_AMOUNT_NULL)
     (var-set pool
       (merge current-pool {
         last-updated: burn-block-height,
         max-deposit: new-max-deposit,
-        fee: fee,
-        fee-threshold: fee-threshold,
+        min-fee: min-fee,
         set-param-signaled-at: none,
       })
     )
     (print {
       type: "set-max-deposit",
       max-deposit: new-max-deposit,
-      fee: fee,
-      fee-threshold: fee-threshold,
+      min-fee: min-fee,
       set-param-signaled-at: none,
       last-updated: burn-block-height,
     })
@@ -712,7 +708,6 @@
   )
   (let (
       (current-pool (var-get pool))
-      (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
         'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2
@@ -737,16 +732,17 @@
                 (btc-amount (get value out))
                 (payload (unwrap! (parse-payload-segwit tx-buff) ERR-ELEMENT-EXPECTED))
                 (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
+                (percent-fee (/ btc-amount u100))
+                (minimum-fee (get min-fee current-pool))
+                (this-fee (if (> percent-fee minimum-fee) percent-fee minimum-fee))
+                (service-fee (/ this-fee u2))
+                (lp-fee (- this-fee service-fee))
                 (sbtc-amount-to-user (- btc-amount this-fee))
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
               )
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
+              (asserts! (<= btc-amount available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
               (asserts! (<= sbtc-amount-to-user max-deposit)
@@ -761,10 +757,14 @@
               })
               (var-set processed-tx-count (+ current-count u1))
               (var-set pool
-                (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+                (merge current-pool { available-sbtc: (- available-sbtc btc-amount) })
               )
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            sbtc-amount-to-user tx-sender stx-receiver none)))              
+                                                            sbtc-amount-to-user tx-sender stx-receiver none)))
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            service-fee tx-sender SERVICE_STYX none)))
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            lp-fee tx-sender OPERATOR_STYX none)))            
               (print {
                 type: "process-btc-deposit",
                 btc-tx-id: result,
@@ -814,7 +814,6 @@
   )
   (let (
       (current-pool (var-get pool))
-      (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
         'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
@@ -838,16 +837,17 @@
                 (btc-amount (get value out))
                 (payload (unwrap! (parse-payload-legacy tx-buff) ERR-ELEMENT-EXPECTED))
                 (stx-receiver (unwrap! (get p payload) ERR-ELEMENT-EXPECTED))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
+                (percent-fee (/ btc-amount u100))
+                (minimum-fee (get min-fee current-pool))
+                (this-fee (if (> percent-fee minimum-fee) percent-fee minimum-fee))
+                (service-fee (/ this-fee u2))
+                (lp-fee (- this-fee service-fee))
                 (sbtc-amount-to-user (- btc-amount this-fee))
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
                 (max-deposit (get max-deposit current-pool))
               )
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
+              (asserts! (<= btc-amount available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
               (asserts! (<= sbtc-amount-to-user max-deposit)
@@ -862,10 +862,14 @@
               })
               (var-set processed-tx-count (+ current-count u1))
               (var-set pool
-                (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+                (merge current-pool { available-sbtc: (- available-sbtc btc-amount) })
               )
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                             sbtc-amount-to-user tx-sender stx-receiver none)))
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            service-fee tx-sender SERVICE_STYX none)))
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            lp-fee tx-sender OPERATOR_STYX none)))
               (print {
                 type: "process-btc-deposit",
                 btc-tx-id: result,
@@ -924,7 +928,6 @@
   )
   (let (
       (current-pool (var-get pool))
-      (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
         'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-wtx-v2
@@ -954,10 +957,11 @@
                 (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
                 (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
                 (ai-ft-allowed (get ft-contract dex-info))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
+                (percent-fee (/ btc-amount u100))
+                (minimum-fee (get min-fee current-pool))
+                (this-fee (if (> percent-fee minimum-fee) percent-fee minimum-fee))
+                (service-fee (/ this-fee u2))
+                (lp-fee (- this-fee service-fee))
                 (sbtc-amount-to-user (- btc-amount this-fee))
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
@@ -968,7 +972,7 @@
               )
               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
               (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)                            
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
+              (asserts! (<= btc-amount available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
               (asserts! (<= sbtc-amount-to-user max-deposit)
@@ -983,7 +987,7 @@
               })
               (var-set processed-tx-count (+ current-count u1))
               (var-set pool
-                (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+                (merge current-pool { available-sbtc: (- available-sbtc btc-amount) })
               )
               (print {
                 type: "process-btc-deposit",
@@ -997,6 +1001,10 @@
                 processor: tx-sender,
                 min-amount-out: min-amount-out
               })
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            service-fee tx-sender SERVICE_STYX none)))
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            lp-fee tx-sender OPERATOR_STYX none)))
                 (if bonded
                     (let ((ai-pool-allowed (get pool-contract dex-info)))
                         (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
@@ -1079,7 +1087,6 @@
   )
   (let (
       (current-pool (var-get pool))
-      (fixed-fee (get fee current-pool))
       (btc-receiver (get btc-receiver current-pool))
       (tx-buff (contract-call?
         'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.bitcoin-helper-v2 concat-tx
@@ -1108,10 +1115,11 @@
                 (dex-id (unwrap! (get d payload) ERR-ELEMENT-EXPECTED))
                 (dex-info (unwrap! (map-get? allowed-dexes dex-id) ERR-DEX-NOT-ALLOWED))
                 (ai-ft-allowed (get ft-contract dex-info))
-                (this-fee (if (<= btc-amount (get fee-threshold current-pool))
-                  (/ fixed-fee u2)
-                  fixed-fee
-                ))
+                (percent-fee (/ btc-amount u100))
+                (minimum-fee (get min-fee current-pool))
+                (this-fee (if (> percent-fee minimum-fee) percent-fee minimum-fee))
+                (service-fee (/ this-fee u2))
+                (lp-fee (- this-fee service-fee))
                 (sbtc-amount-to-user (- btc-amount this-fee))
                 (available-sbtc (get available-sbtc current-pool))
                 (current-count (var-get processed-tx-count))
@@ -1122,7 +1130,7 @@
               )
               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
               (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              
-              (asserts! (<= sbtc-amount-to-user available-sbtc)
+              (asserts! (<= btc-amount available-sbtc)
                 ERR_INSUFFICIENT_POOL_BALANCE
               )
               (asserts! (<= sbtc-amount-to-user max-deposit)
@@ -1137,7 +1145,7 @@
               })
               (var-set processed-tx-count (+ current-count u1))
               (var-set pool
-                (merge current-pool { available-sbtc: (- available-sbtc sbtc-amount-to-user) })
+                (merge current-pool { available-sbtc: (- available-sbtc btc-amount) })
               )
               (print {
                 type: "process-btc-deposit",
@@ -1151,6 +1159,10 @@
                 processor: tx-sender,
                 min-amount-out: min-amount-out
               })
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            service-fee tx-sender SERVICE_STYX none)))
+              (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                            lp-fee tx-sender OPERATOR_STYX none)))
                 (if bonded
                     (let ((ai-pool-allowed (get pool-contract dex-info)))
                         (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
