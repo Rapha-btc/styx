@@ -221,13 +221,13 @@
                                         transfer (* PRICE-PER-SEAT user-seats) tx-sender seat-owner none))
                 success 
                     (let ((is-removed (unwrap! (remove-seat-holder) ERR-REMOVING-HOLDER)))
-                        (map-delete seats-owned tx-sender)
+                        (map-delete seats-owned seat-owner)
                         (var-set total-seats-taken (- (var-get total-seats-taken) user-seats))
                         (var-set total-users (- (var-get total-users) u1))
                         (var-set stx-balance (- (var-get stx-balance) (* PRICE-PER-SEAT user-seats)))
                         (print {
                             type: "refund",
-                            user: tx-sender,
+                            user: seat-owner,
                             seats-refunded: user-seats,
                             seat-holders: (var-get seat-holders),
                             total-seats-taken: (var-get total-seats-taken),
