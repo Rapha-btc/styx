@@ -1036,10 +1036,13 @@
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
                                           (if (> user-change u0)
                                           (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                        user-change tx-sender ai-account none))))
+                                                        user-change tx-sender ai-account none)))
+                                          true)
                                           (ok true))
-                                error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                                error (begin 
+                                        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none)))
+                                        (ok true)))
                         )
                     )
                 ) 
@@ -1192,12 +1195,15 @@
                             (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
-                                          (if (> user-change u0) 
+                                          (if (> user-change u0)
                                           (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                        user-change tx-sender ai-account none))))
+                                                        user-change tx-sender ai-account none)))
+                                          true)
                                           (ok true))
-                                error (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                        sbtc-amount-to-user tx-sender ai-account none))))
+                                error (begin 
+                                        (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none)))
+                                        (ok true)))
                         )
                     )
                 ) 

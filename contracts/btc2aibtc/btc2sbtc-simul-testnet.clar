@@ -786,7 +786,7 @@
       (max-deposit (get max-deposit current-pool))
       (market-open (unwrap! (contract-call? ai-pre is-market-open) ERR-GET-MARKET))
       (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
-      (ai-account (unwrap! (contract-call? .register-ai-account-testnet get-ai-account-by-owner tx-sender) ERR-NO-AI-ACCOUNT)))
+      (ai-account (unwrap! (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.agent-account-registry get-agent-account-by-owner tx-sender) ERR-NO-AI-ACCOUNT)))
     (asserts! (not (var-get swaps-paused)) ERR_FORBIDDEN)
     (asserts! (> burn-block-height (+ (get last-updated current-pool) COOLDOWN))
       ERR_IN_COOLDOWN
@@ -841,17 +841,21 @@
                         (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                         sbtc-amount-to-user tx-sender ai-account none))))
                         (ok true))
-            (let ((ai-pre-allowed (get pre-contract dex-info))
+                                    (let ((ai-pre-allowed (get pre-contract dex-info))
                             (max-seat (/ sbtc-amount-to-user PRICE-PER-SEAT)))
                             (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
                                 actual-seat (let ((user-change (- sbtc-amount-to-user (* actual-seat PRICE-PER-SEAT))))
                                           (if (> user-change u0)
                                           (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                        user-change tx-sender ai-account none))))
+                                                        user-change tx-sender ai-account none)))
+                                          true)
                                           (ok true))
-                                error (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
-                                                        sbtc-amount-to-user tx-sender ai-account none))))))
+                                error (begin 
+                                        (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
+                                                        sbtc-amount-to-user tx-sender ai-account none)))
+                                        (ok true)))
+                        ))
     )  
   )
 )
