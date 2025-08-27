@@ -142,7 +142,7 @@
         (ok true)))
 
     (define-private (not-matching-owner (entry {owner: principal, seats: uint}))
-    (not (is-eq (get owner entry) tx-sender)))
+    (not (is-eq (get owner entry) (var-get target-owner))))
 
     ;; Main functions
     ;; Buy seats in Period 1
@@ -198,12 +198,23 @@
                 error (err error))))
 
     ;; Refund logic only for Period 1 expired and Period 2 not started
-    (define-public (refund)
-        (let (
-            (user-seats (default-to u0 (map-get? seats-owned tx-sender)))
-            (seat-owner tx-sender))
+    (define-public (refund (owner (optional principal)))
+        (let ((seat-owner (default-to tx-sender owner))
+            (user-seats (default-to u0 (map-get? seats-owned seat-owner))))
+            
+            ;; look at circular issues in registration later -> register owner as agent when it's registered as owner of an agent
+            (asserts! (or 
+                (is-eq tx-sender seat-owner)  ;; Direct seat owner
+                (match (contract-call? 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.agent-account-registry get-agent-account-info seat-owner)
+                    agent-info (is-eq tx-sender (get owner agent-info))  ;; tx-sender owns the agent account
+                    none false  ;; seat-owner is not an agent account
+                )
+            ) ERR-NOT-AUTHORIZED)
+
             (asserts! (is-eq (var-get distribution-height) u0) ERR-DISTRIBUTION-ALREADY-SET)
             (asserts! (> user-seats u0) ERR-NOT-SEAT-OWNER)
+            
+            (var-set target-owner seat-owner)
             
             ;; Process refund
             (match (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token 
@@ -223,7 +234,7 @@
                             total-users: (var-get total-users),
                             stx-balance: (var-get stx-balance)
                             })
-                        (ok true))
+                        (ok user-seats)) ;; we need to change this in be Rafa + this means a new
                 error (err error))))
   
   (define-private (get-claimable-amount (owner principal))
