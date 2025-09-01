@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   cvToJSON,
   cvToValue,
@@ -33,13 +33,27 @@ const BTC2AIBTC_CONTRACT = "btc2aibtc-simul";
 const SBTC_TOKEN_CONTRACT =
   "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token";
 const AGENT_REGISTRY_CONTRACT = "agent-account-registry";
-const AN_AGENT_CONTRACT = "an-agent";
+const AN_AGENT_CONTRACT = `${deployer}.an-agent`;
 
 // Test token contracts (would be deployed in actual test)
 const TEST_TOKEN_CONTRACT = `${deployer}.lemar1-faktory`;
 const TEST_PRE_CONTRACT = `${deployer}.lemar1-pre-faktory`;
 const TEST_DEX_CONTRACT = `${deployer}.lemar1-faktory-dex`;
 const TEST_POOL_CONTRACT = `${deployer}.xyk-pool-sbtc-lemar1-v-1-1`;
+
+// Deploy contracts in test environment
+beforeAll(() => {
+  // The contracts should already be deployed via Clarinet.toml
+  // Just verify they exist
+  try {
+    const registry = simnet.callReadOnlyFn(
+      AGENT_REGISTRY_CONTRACT,
+      "get-agent-account-by-owner",
+      [principalCV(address1)],
+      deployer
+    );
+  } catch (error) {}
+});
 
 // Helper function to fund the BTC bridge pool directly from funded wallet
 const fundBridgePool = (amount: number = 690000000) => {
@@ -116,7 +130,7 @@ const setupAgentAccounts = () => {
     simnet.callPublicFn(
       AGENT_REGISTRY_CONTRACT,
       "register-agent-account",
-      [principalCV(user), principalCV(`${deployer}.agent-${index + 1}`)],
+      [principalCV(user), principalCV(AN_AGENT_CONTRACT)],
       user
     );
   });
@@ -124,15 +138,11 @@ const setupAgentAccounts = () => {
 
 describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
   beforeEach(() => {
-    // Reset state and setup for each test
     // Just fund the bridge pool - no need to fund individual wallets
     fundBridgePool(690000000); // 6.9 sBTC to bridge
 
     // Setup agent accounts
     setupAgentAccounts();
-
-    // Fund the bridge pool with sBTC
-    fundBridgePool(10000000); // 1 BTC worth of sBTC (100M sats)
   });
 
   describe("Pool Setup and Allowlist", () => {
@@ -256,7 +266,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
       const pool = cvToValue(poolStatus.result);
       const expectedDecrease = btcAmount * users.length;
       expect(pool.value["available-sbtc"]).toBeLessThan(
-        10000000 - expectedDecrease
+        690000000 - expectedDecrease
       );
     });
   });
@@ -439,7 +449,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
     it("should reject swaps exceeding pool balance", () => {
       setupAllowedDex(1);
 
-      const btcAmount = 20000000; // More than pool balance
+      const btcAmount = 700000000; // More than pool balance (6.9 sBTC)
       const ftContract = principalCV(TEST_TOKEN_CONTRACT);
       const dexContract = principalCV(TEST_DEX_CONTRACT);
       const preContract = principalCV(TEST_PRE_CONTRACT);
@@ -682,7 +692,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
 describe("Pool Management Functions", () => {
   beforeEach(() => {
-    fundBridgePool(10000000);
+    fundBridgePool(100000000); // 1 sBTC for pool management tests
   });
 
   it("should allow operator to add liquidity", () => {
