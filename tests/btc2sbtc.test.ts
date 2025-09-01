@@ -141,7 +141,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
       expect(poolStatus.result.type).toBe(ClarityType.ResponseOk);
       const pool = cvToValue(poolStatus.result);
-      expect(pool.value["total-sbtc"]).toBeGreaterThan(0);
+      expect(Number(pool.value["total-sbtc"].value)).toBeGreaterThan(0);
     });
 
     it("debug environment differences", () => {
@@ -279,7 +279,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
       if (printEvent) {
         const eventData = printEvent.data.value as any;
-        expect(eventData.data.type.data).toBe("process-btc-deposit");
+        expect(eventData.type).toBe("process-btc-deposit");
         expect(eventData.data["btc-amount"].value).toBe(btcAmount.toString());
       }
     });
@@ -851,6 +851,6 @@ describe("Pool Management Functions", () => {
 
     expect(poolStatus.result.type).toBe(ClarityType.ResponseOk);
     const pool = cvToValue(poolStatus.result);
-    expect(pool.value["total-sbtc"]).toBeGreaterThan(0);
+    expect(Number(pool.value["total-sbtc"].value)).toBeGreaterThan(0);
   });
 });
