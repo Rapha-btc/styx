@@ -4,7 +4,7 @@
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait) 
-(use-trait faktory-pre 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.prelaunch-faktory-trait.prelaunch-trait)
+(use-trait faktory-pre 'SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.prelaunch-faktory-trait.prelaunch-trait)
 (use-trait faktory-dex 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.faktory-dex-trait.dex-trait) 
 (use-trait bitflow-pool 'SM1793C4R5PZ4NS4VQ4WMP7SKKYVH8JZEWSZ9HCCR.xyk-pool-trait-v-1-2.xyk-pool-trait)
 
@@ -968,7 +968,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (market-open (unwrap! (contract-call? ai-pre is-market-open) ERR-GET-MARKET))
                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
-                (ai-account (unwrap! (contract-call? 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
+                (ai-account (unwrap! (contract-call? 'SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
               )
               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
               (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)                            
@@ -1129,7 +1129,7 @@
                 (max-deposit (get max-deposit current-pool))
                 (market-open (unwrap! (contract-call? ai-pre is-market-open) ERR-GET-MARKET))
                 (bonded (unwrap! (contract-call? ai-dex get-bonded) ERR-GET-BONDED))
-                (ai-account (unwrap! (contract-call? 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
+                (ai-account (unwrap! (contract-call? 'SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.agent-account-registry get-agent-account-by-owner stx-receiver) ERR-NO-AI-ACCOUNT))
               )
               (asserts! (is-eq (contract-of ft) ai-ft-allowed) ERR-WRONG-FT)
               (asserts! (is-eq (contract-of sbtc-token) SBTC_CONTRACT) ERR-WRONG-SBTC)              

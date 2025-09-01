@@ -1,5 +1,5 @@
 ;; Fee distribution and Prelaunch support - new pool dedicated to ai btc
-;; STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.btc2sbtc
+;;/Users/owner/alpha/contracts/styx/styx/contracts/btc2aibtc/btc2aibtc-prelaunch/btc2sbtc-simul-testnet.clar
 ;; Btc2Sbtc.com Pool structure to track sBTC liquidity (single pool per contract)
 ;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
 ;; Ultra-fast passage via Clarity's direct Bitcoin state reading
@@ -843,7 +843,7 @@
                         (try! (as-contract (contract-call? 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token transfer 
                                                         sbtc-amount-to-user tx-sender ai-account none))))
                         (ok true))
-                                    (let ((ai-pre-allowed (get pre-contract dex-info))
+            (let ((ai-pre-allowed (get pre-contract dex-info))
                             (max-seat (/ sbtc-amount-to-user PRICE-PER-SEAT)))
                             (asserts! (is-eq (contract-of ai-pre) ai-pre-allowed) ERR-WRONG-PRE)
                             (match (as-contract (contract-call? ai-pre buy-up-to max-seat (some ai-account)))
