@@ -1,11 +1,10 @@
 ;; Agent Account Registry
 ;; Auto-registration with attestation levels
-;; (use-trait agent-account 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits.aibtc-account-config)
 (use-trait agent-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)
 
-(define-constant ATTESTOR_DEPLOYER 'SP2Z94F6QX847PMXTPJJ2ZCCN79JZDW3PJ4E6ZABY)
-(define-constant ATTESTOR_1 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22)
-(define-constant ATTESTOR_2 'SP2GHGQRWSTM89SQMZXTQJ0GRHV93MSX9J84J7BEA)
+(define-constant ATTESTOR_DEPLOYER 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1)
+(define-constant ATTESTOR_1 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)
+(define-constant ATTESTOR_2 'ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6)
 
 (define-constant ATTESTORS (list  ATTESTOR_1 ATTESTOR_2))
 
@@ -14,8 +13,10 @@
 (define-constant ERR_NOT_ATTESTOR (err u804))
 (define-constant ERR_GET_CONFIG_FAILED (err u805))
 (define-constant ERR_ACCOUNT_NOT_FOUND (err u806))
+(define-constant ERR_INVALID_AGENT_TYPE (err u807))
+(define-constant ERR_INVALID_OWNER_TYPE (err u808))
 
-;; agent-account 
+;; agent-account -> {owner, agent, attestation-level}
 (define-map agent-account-registry
   principal 
   {
@@ -36,6 +37,7 @@
 (define-public (auto-register-agent-account (owner principal) (agent principal))
   (begin  
     (asserts! (is-eq tx-sender ATTESTOR_DEPLOYER) ERR_NOT_AUTHORIZED_DEPLOYER)
+    (try! (validate-principals contract-caller owner))
     (do-register-account contract-caller owner agent)
   )
 )
@@ -48,6 +50,7 @@
     (agent (get agent ai-config))
   )
     (asserts! (is-eq tx-sender ATTESTOR_DEPLOYER) ERR_NOT_AUTHORIZED_DEPLOYER)
+    (try! (validate-principals agent-account-address owner))
     (do-register-account agent-account-address owner agent)
   )
 )
@@ -69,6 +72,19 @@
         attestation-level: u1}
     })
     (ok account)
+  )
+)
+
+(define-private (validate-principals (account principal) (owner principal))
+  (let (
+    (account-parts (unwrap-panic (principal-destruct? account)))
+    (owner-parts (unwrap-panic (principal-destruct? owner)))
+  )
+    (begin
+      (asserts! (is-some (get name account-parts)) ERR_INVALID_AGENT_TYPE)
+      (asserts! (is-none (get name owner-parts)) ERR_INVALID_OWNER_TYPE)
+      (ok true)
+    )
   )
 )
 
