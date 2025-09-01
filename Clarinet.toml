@@ -41,22 +41,22 @@ contract_id = 'ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.prelaunch-faktory-trait
 [contracts.agent-account-registry]
 path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/agent-account-registry.clar'
 clarity_version = 3
-epoch = '3.1'
-
-[contracts.pre-trait-final2]
-path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/pre-trait-final2.clar'
-clarity_version = 3
-epoch = '3.1'
-
-[contracts.btc2aibtc-simul]
-path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/btc2sbtc-simul-testnet.clar'
-clarity_version = 3
-epoch = '3.1'
+epoch = 'latest'
 
 [contracts.an-agent]
 path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/an-agent.clar'
 clarity_version = 3
-epoch = '3.1'
+epoch = 'latest'
+
+[contracts.btc2aibtc-simul]
+path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/btc2sbtc-simul-testnet.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.pre-trait-final2]
+path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/pre-trait-final2.clar'
+clarity_version = 3
+epoch = 'latest'
 
 [repl.analysis]
 passes = []

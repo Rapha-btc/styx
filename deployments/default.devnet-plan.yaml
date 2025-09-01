@@ -112,11 +112,43 @@ plan:
             cost: 25460
             path: "./.cache/requirements/ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.clar"
             clarity-version: 3
+      epoch: "3.1"
+    - id: 1
+      transactions:
+        - requirement-publish:
+            contract-id: ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.prelaunch-faktory-trait
+            remap-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            remap-principals:
+              ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 5880
+            path: "./.cache/requirements/ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.prelaunch-faktory-trait.clar"
+            clarity-version: 3
         - contract-publish:
-            contract-name: btc2aibtc
+            contract-name: agent-account-registry
             expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            cost: 569670
-            path: contracts/btc2aibtc/btc2aibtc.clar
+            cost: 53950
+            path: contracts/btc2aibtc/btc2aibtc-prelaunch/agent-account-registry.clar
             anchor-block-only: true
             clarity-version: 3
-      epoch: "3.1"
+        - contract-publish:
+            contract-name: an-agent
+            expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 166330
+            path: contracts/btc2aibtc/btc2aibtc-prelaunch/an-agent.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: pre-trait-final2
+            expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 8190
+            path: contracts/btc2aibtc/btc2aibtc-prelaunch/pre-trait-final2.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: btc2aibtc-simul
+            expected-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            cost: 326250
+            path: contracts/btc2aibtc/btc2aibtc-prelaunch/btc2sbtc-simul-testnet.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.2"

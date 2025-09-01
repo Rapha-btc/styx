@@ -41,21 +41,29 @@ const TEST_PRE_CONTRACT = `${deployer}.lemar1-pre-faktory`;
 const TEST_DEX_CONTRACT = `${deployer}.lemar1-faktory-dex`;
 const TEST_POOL_CONTRACT = `${deployer}.xyk-pool-sbtc-lemar1-v-1-1`;
 
-// Helper function to get sBTC from faucet
-const getSbtc = (recipient: string) => {
-  return simnet.callPublicFn(SBTC_TOKEN_CONTRACT, "faucet", [], recipient);
-};
+// Helper function to fund the BTC bridge pool directly from funded wallet
+const fundBridgePool = (amount: number = 690000000) => {
+  // 6.9 sBTC default
+  const fundedWallet = "ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H"; // Has 6.9 sBTC
 
-// Helper function to fund the BTC bridge pool
-const fundBridgePool = (amount: number) => {
-  // First get sBTC
-  getSbtc(deployer);
+  // Transfer sBTC directly to deployer for pool initialization
+  const transferResult = simnet.callPublicFn(
+    SBTC_TOKEN_CONTRACT,
+    "transfer",
+    [
+      uintCV(amount),
+      principalCV(fundedWallet),
+      principalCV(deployer),
+      noneCV(),
+    ],
+    fundedWallet
+  );
 
-  // Initialize pool
+  // Initialize pool with the transferred sBTC
   return simnet.callPublicFn(
     BTC2AIBTC_CONTRACT,
     "initialize-pool",
-    [uintCV(amount), bufferCV(Buffer.from("test-btc-address".padEnd(40, "0")))],
+    [uintCV(amount), bufferCV(new Uint8Array(40).fill(0))],
     deployer
   );
 };
@@ -117,19 +125,8 @@ const setupAgentAccounts = () => {
 describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
   beforeEach(() => {
     // Reset state and setup for each test
-    // Fund multiple wallets with sBTC
-    [
-      address1,
-      address2,
-      address3,
-      address4,
-      address5,
-      address6,
-      address7,
-      address8,
-      address9,
-      address10,
-    ].forEach(getSbtc);
+    // Just fund the bridge pool - no need to fund individual wallets
+    fundBridgePool(690000000); // 6.9 sBTC to bridge
 
     // Setup agent accounts
     setupAgentAccounts();
@@ -685,13 +682,11 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
 describe("Pool Management Functions", () => {
   beforeEach(() => {
-    getSbtc(deployer);
     fundBridgePool(10000000);
   });
 
   it("should allow operator to add liquidity", () => {
     const additionalLiquidity = 1000000;
-    getSbtc(deployer);
 
     // Signal add liquidity
     const { result: signalResult } = simnet.callPublicFn(
