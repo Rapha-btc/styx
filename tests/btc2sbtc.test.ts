@@ -279,7 +279,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
       if (printEvent) {
         const eventData = printEvent.data.value as any;
-        expect(eventData.type).toBe("process-btc-deposit");
+        expect(eventData.type.data).toBe("process-btc-deposit");
         expect(eventData.data["btc-amount"].value).toBe(btcAmount.toString());
       }
     });
@@ -336,7 +336,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
       const pool = cvToValue(poolStatus.result);
       const expectedDecrease = btcAmount * users.length;
-      expect(pool.value["available-sbtc"]).toBeLessThan(
+      expect(Number(pool.value["available-sbtc"].value)).toBeLessThan(
         690000000 - expectedDecrease
       );
     });
@@ -479,12 +479,14 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
 
   describe("Error Handling", () => {
     it("should reject swaps when paused", () => {
+      const operator = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2"; // OPERATOR_STYX
+
       // Trigger emergency stop
       const pauseResult = simnet.callPublicFn(
         BTC2AIBTC_CONTRACT,
         "emergency-stop-swaps",
         [],
-        deployer
+        operator
       );
 
       setupAllowedDex(1);
