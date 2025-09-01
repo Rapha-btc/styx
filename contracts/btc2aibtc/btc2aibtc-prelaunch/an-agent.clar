@@ -5,7 +5,10 @@
 ;; traits
 ;; (impl-trait 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits.aibtc-account)
 ;; (impl-trait 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits.aibtc-account-proposals)
-(impl-trait .aibtc-agent-account-traits.aibtc-account-config)
+
+;; (impl-trait .aibtc-agent-account-traits.aibtc-account-config)
+(impl-trait 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)
+
 ;; (impl-trait 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits.aibtc-account-swaps)
 ;; (use-trait ft-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
 ;; (use-trait dao-swap-adapter 'SPW8QZNWKZGVHX012HCBJVJVPS94PXFG578P53TM.aibtc-agent-account-traits.aibtc-dao-swap-adapter)

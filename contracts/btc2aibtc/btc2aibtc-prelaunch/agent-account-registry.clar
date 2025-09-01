@@ -2,7 +2,7 @@
 ;; Auto-registration with attestation levels
 (use-trait agent-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)
 
-(define-constant ATTESTOR_DEPLOYER 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1)
+(define-constant ATTESTOR_DEPLOYER tx-sender) ;; so that the auto register goes thru ;; 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1)
 (define-constant ATTESTOR_1 'STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2)
 (define-constant ATTESTOR_2 'ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6)
 
