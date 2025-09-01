@@ -94,7 +94,7 @@
   btc-receiver: 0x0000000000000000000000000000000000000000,
   last-updated: u0,
   withdrawal-signaled-at: none,
-  max-deposit: u1000000,
+  max-deposit: u1000000000,
   min-fee: u3000,
   add-liq-signaled-at: none,
   set-param-signaled-at: none,

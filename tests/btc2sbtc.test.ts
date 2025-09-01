@@ -644,7 +644,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
       // This should fail if agent accounts are required
       // Adjust the expected error code based on your contract implementation
       if (result.result.type !== ClarityType.ResponseOk) {
-        expect(result.result.type).toBe(ClarityType.ResponseError);
+        expect(result.result.type).toBe(ClarityType.ResponseErr);
       }
     });
   });
