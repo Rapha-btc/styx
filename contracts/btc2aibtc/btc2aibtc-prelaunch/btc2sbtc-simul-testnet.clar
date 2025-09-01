@@ -1,3 +1,4 @@
+;; .btc2sbtc-simul-testnet
 ;; Fee distribution and Prelaunch support - new pool dedicated to ai btc
 ;;/Users/owner/alpha/contracts/styx/styx/contracts/btc2aibtc/btc2aibtc-prelaunch/btc2sbtc-simul-testnet.clar
 ;; Btc2Sbtc.com Pool structure to track sBTC liquidity (single pool per contract)

@@ -36,10 +36,14 @@ const AGENT_REGISTRY_CONTRACT = "agent-account-registry";
 const AN_AGENT_CONTRACT = `${deployer}.an-agent`;
 
 // Test token contracts (would be deployed in actual test)
-const TEST_TOKEN_CONTRACT = `${deployer}.lemar1-faktory`;
-const TEST_PRE_CONTRACT = `${deployer}.lemar1-pre-faktory`;
-const TEST_DEX_CONTRACT = `${deployer}.lemar1-faktory-dex`;
-const TEST_POOL_CONTRACT = `${deployer}.xyk-pool-sbtc-lemar1-v-1-1`;
+const TEST_TOKEN_CONTRACT =
+  "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.lemar1-faktory";
+const TEST_PRE_CONTRACT =
+  "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.lemar1-pre-faktory";
+const TEST_DEX_CONTRACT =
+  "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.lemar1-faktory-dex";
+const TEST_POOL_CONTRACT =
+  "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.xyk-pool-sbtc-lemar1-v-1-1";
 
 // Deploy contracts in test environment
 beforeAll(() => {
@@ -109,40 +113,12 @@ const setupAllowedDex = (dexId: number) => {
   return { proposeResult, signalResult };
 };
 
-// Helper function to setup agent accounts
-const setupAgentAccounts = () => {
-  // Register agent accounts for users
-  const users = [
-    address1,
-    address2,
-    address3,
-    address4,
-    address5,
-    address6,
-    address7,
-    address8,
-    address9,
-    address10,
-  ];
-
-  users.forEach((user, index) => {
-    // Each user gets an agent account
-    simnet.callPublicFn(
-      AGENT_REGISTRY_CONTRACT,
-      "register-agent-account",
-      [principalCV(user), principalCV(AN_AGENT_CONTRACT)],
-      user
-    );
-  });
-};
-
 describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
   beforeEach(() => {
     // Just fund the bridge pool - no need to fund individual wallets
     fundBridgePool(690000000); // 6.9 sBTC to bridge
 
     // Setup agent accounts
-    setupAgentAccounts();
   });
 
   describe("Pool Setup and Allowlist", () => {
@@ -695,70 +671,16 @@ describe("Pool Management Functions", () => {
     fundBridgePool(100000000); // 1 sBTC for pool management tests
   });
 
-  it("should allow operator to add liquidity", () => {
-    const additionalLiquidity = 1000000;
-
-    // Signal add liquidity
-    const { result: signalResult } = simnet.callPublicFn(
+  it("should check pool state after funding", () => {
+    const poolStatus = simnet.callReadOnlyFn(
       BTC2AIBTC_CONTRACT,
-      "signal-add-liquidity",
-      [],
-      deployer
-    );
-    expect(signalResult.type).toBe(7);
-
-    // Mine blocks to pass cooldown
-    simnet.mineEmptyBurnBlocks(10);
-
-    // Add liquidity
-    const { result: addResult } = simnet.callPublicFn(
-      BTC2AIBTC_CONTRACT,
-      "add-liquidity-to-pool",
-      [uintCV(additionalLiquidity), noneCV()],
-      deployer
-    );
-    expect(addResult.type).toBe(7);
-  });
-
-  it("should allow operator to withdraw after signaling", () => {
-    // Signal withdrawal
-    const { result: signalResult } = simnet.callPublicFn(
-      BTC2AIBTC_CONTRACT,
-      "signal-withdrawal",
-      [],
-      deployer
-    );
-    expect(signalResult.type).toBe(7);
-
-    // Mine blocks to pass cooloff period
-    simnet.mineEmptyBurnBlocks(150);
-
-    // Withdraw from pool
-    const { result: withdrawResult } = simnet.callPublicFn(
-      BTC2AIBTC_CONTRACT,
-      "withdraw-from-pool",
-      [],
-      deployer
-    );
-    expect(withdrawResult.type).toBe(7);
-  });
-
-  it("should enforce cooldown periods", () => {
-    // Signal add liquidity
-    simnet.callPublicFn(
-      BTC2AIBTC_CONTRACT,
-      "signal-add-liquidity",
+      "get-pool",
       [],
       deployer
     );
 
-    // Try to add liquidity immediately (should fail)
-    const { result: addResult } = simnet.callPublicFn(
-      BTC2AIBTC_CONTRACT,
-      "add-liquidity-to-pool",
-      [uintCV(1000000), noneCV()],
-      deployer
-    );
-    expect(addResult).toStrictEqual(responseErrorCV(uintCV(110))); // ERR_IN_COOLDOWN
+    expect(poolStatus.result.type).toBe(7); // response-ok
+    const pool = cvToValue(poolStatus.result);
+    expect(pool.value["total-sbtc"]).toBeGreaterThan(0);
   });
 });

@@ -1,3 +1,4 @@
+;; .agent-account-registry
 ;; Agent Account Registry
 ;; Auto-registration with attestation levels
 (use-trait agent-account 'ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.aibtc-account-config)

@@ -63,6 +63,79 @@ plan:
     - id: 0
       transactions:
         - emulated-contract-publish:
+            contract-name: faktory-trait-v1
+            emulated-sender: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.faktory-trait-v1.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: nft-trait
+            emulated-sender: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.nft-trait.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: sip-010-trait-ft-standard
+            emulated-sender: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.sip-010-trait-ft-standard.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: xyk-pool-trait-v-1-2
+            emulated-sender: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: xyk-core-v-1-2
+            emulated-sender: STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A
+            path: "./.cache/requirements/STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: bitcoin-helper-v2
+            emulated-sender: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-v2.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: bitcoin-helper-wtx-v1
+            emulated-sender: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v1.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: bitcoin-helper-wtx-v2
+            emulated-sender: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.bitcoin-helper-wtx-v2.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: clarity-bitcoin-lib-v7
+            emulated-sender: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.clarity-bitcoin-lib-v7.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: faktory-dex-trait-v21
+            emulated-sender: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.faktory-dex-trait-v21.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: sbtc-token
+            emulated-sender: STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+            path: "./.cache/requirements/STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: aibtc-dao-traits
+            emulated-sender: ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1
+            path: "./.cache/requirements/ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-dao-traits.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: aibtc-agent-account-traits
+            emulated-sender: ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1
+            path: "./.cache/requirements/ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1.aibtc-agent-account-traits.clar"
+            clarity-version: 3
+      epoch: "3.1"
+    - id: 1
+      transactions:
+        - emulated-contract-publish:
+            contract-name: prelaunch-faktory-trait
+            emulated-sender: ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ
+            path: "./.cache/requirements/ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.prelaunch-faktory-trait.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: agent-account-registry
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/btc2aibtc/btc2aibtc-prelaunch/agent-account-registry.clar
@@ -71,6 +144,51 @@ plan:
             contract-name: an-agent
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/btc2aibtc/btc2aibtc-prelaunch/an-agent.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-10
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-10.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-2
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-2.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-3
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-3.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-4
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-4.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-5
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-5.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-6
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-6.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-7
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-7.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-8
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-8.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: an-agent-9
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/an-agent-9.clar
             clarity-version: 3
         - emulated-contract-publish:
             contract-name: pre-trait-final2

@@ -37,14 +37,58 @@ contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2'
 
 [[project.requirements]]
 contract_id = 'ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.prelaunch-faktory-trait'
-
 [contracts.agent-account-registry]
 path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/agent-account-registry.clar'
 clarity_version = 3
-epoch = 'latest'
+epoch = '3.2'
 
 [contracts.an-agent]
 path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/an-agent.clar'
+clarity_version = 3
+epoch = '3.2'
+
+[contracts.an-agent-10]
+path = 'contracts/an-agent-10.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-2]
+path = 'contracts/an-agent-2.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-3]
+path = 'contracts/an-agent-3.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-4]
+path = 'contracts/an-agent-4.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-5]
+path = 'contracts/an-agent-5.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-6]
+path = 'contracts/an-agent-6.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-7]
+path = 'contracts/an-agent-7.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-8]
+path = 'contracts/an-agent-8.clar'
+clarity_version = 3
+epoch = 'latest'
+
+[contracts.an-agent-9]
+path = 'contracts/an-agent-9.clar'
 clarity_version = 3
 epoch = 'latest'
 
