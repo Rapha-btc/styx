@@ -35,6 +35,9 @@ contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-pool-trait-v-1-2'
 [[project.requirements]]
 contract_id = 'STTWD9SPRQVD3P733V89SV0P8RZRZNQADG034F0A.xyk-core-v-1-2'
 
+[[project.requirements]]
+contract_id = 'ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.prelaunch-faktory-trait'
+
 [contracts.agent-account-registry]
 path = 'contracts/agent-account-registry.clar'
 clarity_version = 3
@@ -49,6 +52,12 @@ epoch = '3.1'
 path = 'contracts/btc2aibtc/pre-trait-final2.clar'
 clarity_version = 3
 epoch = '3.1'
+
+[contracts.btc2aibtc-simul]
+path = 'contracts/btc2aibtc/btc2aibtc-prelaunch/btc2sbtc-simul-testnet.clar'
+clarity_version = 3
+epoch = '3.1'
+
 [repl.analysis]
 passes = []
 
