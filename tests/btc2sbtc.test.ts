@@ -61,53 +61,61 @@ beforeAll(() => {
 
 // Helper function to fund the BTC bridge pool directly from funded wallet
 const fundBridgePool = (amount: number = 690000000) => {
-  // 6.9 sBTC default
-  const fundedWallet = "ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H"; // Has 6.9 sBTC
+  const fundedWallet = "ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H";
+  const operator = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2"; // OPERATOR_STYX
 
-  // Transfer sBTC directly to deployer for pool initialization
+  // Transfer sBTC to the operator (not deployer)
   const transferResult = simnet.callPublicFn(
     SBTC_TOKEN_CONTRACT,
     "transfer",
     [
       uintCV(amount),
       principalCV(fundedWallet),
-      principalCV(deployer),
+      principalCV(operator),
       noneCV(),
     ],
     fundedWallet
   );
 
-  // Initialize pool with the transferred sBTC
-  return simnet.callPublicFn(
+  // Initialize pool FROM the operator
+  const initResult = simnet.callPublicFn(
     BTC2AIBTC_CONTRACT,
     "initialize-pool",
     [uintCV(amount), bufferCV(new Uint8Array(40).fill(0))],
-    deployer
+    operator
   );
+
+  // Advance blocks to get past the cooldown period (COOLDOWN = 6 blocks)
+  simnet.mineEmptyBlocks(7); // Move 7 blocks ahead to be safe
+
+  return initResult;
 };
 
 // Helper function to propose and approve allowlist
 const setupAllowedDex = (dexId: number) => {
-  // Mock contracts for testing - in real tests these would be actual deployed contracts
   const ftContract = principalCV(TEST_TOKEN_CONTRACT);
   const preContract = principalCV(TEST_PRE_CONTRACT);
   const dexContract = principalCV(TEST_DEX_CONTRACT);
   const poolContract = principalCV(TEST_POOL_CONTRACT);
 
-  // Propose allowlist
+  // Use actual approver addresses from the contract
+  const approver1 = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2";
+  const approver2 = "ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6";
+
+  // Propose from first approver
   const proposeResult = simnet.callPublicFn(
     BTC2AIBTC_CONTRACT,
     "propose-allowlist-dexes",
     [ftContract, preContract, dexContract, poolContract],
-    deployer
+    approver1
   );
 
-  // Signal approval (need 2 approvers minimum)
+  // Signal from second approver
   const signalResult = simnet.callPublicFn(
     BTC2AIBTC_CONTRACT,
     "signal-allowlist-approval",
     [uintCV(1)], // proposal-id
-    address1 // Second approver
+    approver2
   );
 
   return { proposeResult, signalResult };
@@ -130,7 +138,7 @@ describe("BTC to AI BTC Bridge - swap-btc-to-aibtc", () => {
         deployer
       );
 
-      expect(poolStatus.result.type).toBe(7); // response-ok
+      expect(poolStatus.result.type).toBe("ok"); // response-ok
       const pool = cvToValue(poolStatus.result);
       expect(pool.value["total-sbtc"]).toBeGreaterThan(0);
     });
@@ -679,7 +687,7 @@ describe("Pool Management Functions", () => {
       deployer
     );
 
-    expect(poolStatus.result.type).toBe(7); // response-ok
+    expect(poolStatus.result.type).toBe("ok"); // response-ok
     const pool = cvToValue(poolStatus.result);
     expect(pool.value["total-sbtc"]).toBeGreaterThan(0);
   });
