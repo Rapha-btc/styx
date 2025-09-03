@@ -365,7 +365,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
       );
     });
 
-    it("DEBUG: Invalid DEX response", () => {
+    it("Invalid DEX validation works correctly", () => {
       const btcAmount = 50000;
       const invalidDexId = 999;
 
@@ -391,26 +391,45 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         address1
       );
 
-      expect.fail(`=== INVALID DEX DEBUG ===
-Result type: ${result.result.type}
-Result: ${JSON.stringify(cvToJSON(result.result), null, 2)}
-Expected ERR-DEX-NOT-ALLOWED (u149): ${JSON.stringify(
-        cvToJSON(responseErrorCV(uintCV(149))),
-        null,
-        2
-      )}
-=== END DEBUG ===`);
+      console.log(`=== INVALID DEX TEST ===`);
+      console.log(`Result type: ${result.result.type}`);
+      console.log(
+        `Swap with invalid DEX failed correctly: ${
+          result.result.type === ClarityType.ResponseErr
+        }`
+      );
+
+      // Assert swap fails with invalid DEX
+      expect(result.result.type).toBe(ClarityType.ResponseErr);
+
+      // Assert correct error code
+      const errorCode = cvToValue(result.result);
+      expect(errorCode.value).toBe("149"); // ERR-DEX-NOT-ALLOWED
+
+      console.log(
+        `✓ Invalid DEX validation verified - correctly rejected DEX ID ${invalidDexId}`
+      );
     });
 
-    it("DEBUG: Pool balance exceeded response", () => {
+    it("Pool balance validation works correctly", () => {
       setupAllowedDex(1);
 
-      const btcAmount = 700000000;
+      const btcAmount = 700000000; // More than available pool balance
       const ftContract = principalCV(TEST_TOKEN_CONTRACT);
       const dexContract = principalCV(TEST_DEX_CONTRACT);
       const preContract = principalCV(TEST_PRE_CONTRACT);
       const poolContract = principalCV(TEST_POOL_CONTRACT);
       const sbtcContract = principalCV(SBTC_TOKEN_CONTRACT);
+
+      // Check current pool balance
+      const poolStatus = simnet.callReadOnlyFn(
+        BTC2AIBTC_CONTRACT,
+        "get-pool",
+        [],
+        deployer
+      );
+      const pool = cvToValue(poolStatus.result);
+      const availableBalance = parseInt(pool.value["available-sbtc"].value);
 
       const result = simnet.callPublicFn(
         BTC2AIBTC_CONTRACT,
@@ -428,15 +447,29 @@ Expected ERR-DEX-NOT-ALLOWED (u149): ${JSON.stringify(
         address1
       );
 
-      expect.fail(`=== POOL BALANCE EXCEEDED DEBUG ===
-Result type: ${result.result.type}
-Result: ${JSON.stringify(cvToJSON(result.result), null, 2)}
-Expected ERR_INSUFFICIENT_POOL_BALANCE (u132): ${JSON.stringify(
-        cvToJSON(responseErrorCV(uintCV(132))),
-        null,
-        2
-      )}
-=== END DEBUG ===`);
+      console.log(`=== POOL BALANCE TEST ===`);
+      console.log(`Available pool balance: ${availableBalance} sats`);
+      console.log(`Attempted swap amount: ${btcAmount} sats`);
+      console.log(`Swap exceeds balance: ${btcAmount > availableBalance}`);
+      console.log(
+        `Swap failed correctly: ${
+          result.result.type === ClarityType.ResponseErr
+        }`
+      );
+
+      // Assert swap fails when exceeding pool balance
+      expect(result.result.type).toBe(ClarityType.ResponseErr);
+
+      // Assert correct error code
+      const errorCode = cvToValue(result.result);
+      expect(errorCode.value).toBe("132"); // ERR_INSUFFICIENT_POOL_BALANCE
+
+      // Assert the swap amount actually exceeds available balance
+      expect(btcAmount).toBeGreaterThan(availableBalance);
+
+      console.log(
+        `✓ Pool balance validation verified - correctly rejected oversized swap`
+      );
     });
   });
 
