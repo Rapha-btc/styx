@@ -284,9 +284,10 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
   });
 
   describe("Debug Error Handling", () => {
-    it("DEBUG: Emergency stop response", () => {
+    it("Emergency stop functionality works correctly", () => {
       const operator = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2";
 
+      // Execute emergency stop
       const pauseResult = simnet.callPublicFn(
         BTC2AIBTC_CONTRACT,
         "emergency-stop-swaps",
@@ -303,6 +304,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
       const poolContract = principalCV(TEST_POOL_CONTRACT);
       const sbtcContract = principalCV(SBTC_TOKEN_CONTRACT);
 
+      // Try to swap after emergency stop
       const result = simnet.callPublicFn(
         BTC2AIBTC_CONTRACT,
         "swap-btc-to-aibtc",
@@ -319,16 +321,48 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         address1
       );
 
-      expect.fail(`=== EMERGENCY STOP DEBUG ===
-Pause result: ${JSON.stringify(cvToJSON(pauseResult.result), null, 2)}
-Swap after pause result type: ${result.result.type}
-Swap after pause result: ${JSON.stringify(cvToJSON(result.result), null, 2)}
-Expected ERR_FORBIDDEN (u114): ${JSON.stringify(
-        cvToJSON(responseErrorCV(uintCV(114))),
-        null,
-        2
-      )}
-=== END DEBUG ===`);
+      // Check that swaps are paused
+      const swapsPaused = simnet.callReadOnlyFn(
+        BTC2AIBTC_CONTRACT,
+        "are-swaps-paused",
+        [],
+        operator
+      );
+
+      console.log(`=== EMERGENCY STOP TEST ===`);
+      console.log(
+        `Emergency stop succeeded: ${
+          pauseResult.result.type === ClarityType.ResponseOk
+        }`
+      );
+      console.log(
+        `Swaps paused status: ${cvToValue(swapsPaused.result).value}`
+      );
+      console.log(
+        `Swap after pause failed correctly: ${
+          result.result.type === ClarityType.ResponseErr
+        }`
+      );
+
+      // Assert emergency stop succeeded
+      expect(pauseResult.result.type).toBe(ClarityType.ResponseOk);
+
+      // Assert swaps are now paused
+      console.log(
+        "DEBUG swapsPaused result:",
+        JSON.stringify(cvToJSON(swapsPaused.result), null, 2)
+      );
+      console.log("DEBUG cvToValue:", cvToValue(swapsPaused.result));
+      expect(cvToValue(swapsPaused.result)).toBe(true);
+
+      // Assert swap after pause fails with correct error
+      expect(result.result.type).toBe(ClarityType.ResponseErr);
+      const errorCode = cvToValue(result.result).value;
+      expect(errorCode).toBe("114"); // ERR_FORBIDDEN
+
+      console.log(
+        `✓ Emergency stop functionality verified - swaps correctly blocked after pause`
+      );
     });
 
     it("DEBUG: Invalid DEX response", () => {
