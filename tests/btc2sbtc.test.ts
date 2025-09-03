@@ -474,7 +474,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
   });
 
   describe("Debug Pool State", () => {
-    it("DEBUG: Pool state after funding", () => {
+    it("Pool initialization and state verification works correctly", () => {
       const poolStatus = simnet.callReadOnlyFn(
         BTC2AIBTC_CONTRACT,
         "get-pool",
@@ -484,12 +484,39 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
 
       const pool = cvToValue(poolStatus.result);
 
-      expect.fail(`=== POOL STATE DEBUG ===
-Pool status type: ${poolStatus.result.type}
-Pool data: ${JSON.stringify(pool, null, 2)}
-Total sBTC value: ${pool.value["total-sbtc"]?.value || "undefined"}
-Available sBTC value: ${pool.value["available-sbtc"]?.value || "undefined"}
-=== END DEBUG ===`);
+      console.log(`=== POOL STATE TEST ===`);
+      console.log(
+        `Pool initialized successfully: ${
+          poolStatus.result.type === ClarityType.ResponseOk
+        }`
+      );
+      console.log(`Total sBTC: ${pool.value["total-sbtc"].value} sats`);
+      console.log(`Available sBTC: ${pool.value["available-sbtc"].value} sats`);
+      console.log(`Max deposit: ${pool.value["max-deposit"].value} sats`);
+      console.log(`Min fee: ${pool.value["min-fee"].value} sats`);
+
+      // Assert pool status is ok
+      expect(poolStatus.result.type).toBe(ClarityType.ResponseOk);
+
+      // Assert correct pool initialization values
+      expect(pool.value["total-sbtc"].value).toBe("690000000");
+      expect(pool.value["available-sbtc"].value).toBe("690000000");
+      expect(pool.value["max-deposit"].value).toBe("1000000000");
+      expect(pool.value["min-fee"].value).toBe("3000");
+
+      // Assert pool is properly initialized
+      expect(parseInt(pool.value["total-sbtc"].value)).toBeGreaterThan(0);
+      expect(parseInt(pool.value["available-sbtc"].value)).toBeGreaterThan(0);
+      expect(pool.value["last-updated"].value).toBeTruthy();
+
+      // Assert optional fields are properly set to none initially
+      expect(pool.value["add-liq-signaled-at"].value).toBeNull();
+      expect(pool.value["set-param-signaled-at"].value).toBeNull();
+      expect(pool.value["withdrawal-signaled-at"].value).toBeNull();
+
+      console.log(
+        `✓ Pool state verification passed - pool properly initialized with correct parameters`
+      );
     });
   });
 });
