@@ -520,134 +520,48 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
     });
   });
 
-  // Replace the failing tests with these debug versions
-
-  describe("Full Lifecycle Coverage - DEBUG", () => {
+  describe("Debug Agent Lookup", () => {
     beforeEach(() => {
       fundBridgePool(690000000);
       setupAllowedDex(1);
     });
 
-    it("DEBUG: Check contract method availability", () => {
-      console.log("=== CONTRACT METHOD DEBUG ===");
+    it("DEBUG: Check agent account lookup for first owner", () => {
+      // Test with just the first owner to understand the data structure
+      const testOwner = "ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5";
 
-      // Test is-market-open method
-      try {
-        const marketOpen = simnet.callReadOnlyFn(
-          TEST_PRE_CONTRACT,
-          "is-market-open",
-          [],
-          deployer
-        );
-        console.log(
-          "is-market-open result:",
-          JSON.stringify(cvToJSON(marketOpen.result), null, 2)
-        );
-        console.log("is-market-open type:", marketOpen.result.type);
-        console.log(
-          "is-market-open success:",
-          marketOpen.result.type !== ClarityType.ResponseErr
-        );
-      } catch (error) {
-        console.log("is-market-open ERROR:", error.message);
-      }
+      console.log("=== AGENT LOOKUP DEBUG ===");
+      console.log(`Testing owner: ${testOwner}`);
 
-      // Test get-bonded method
-      try {
-        const bonded = simnet.callReadOnlyFn(
-          TEST_DEX_CONTRACT,
-          "get-bonded",
-          [],
-          deployer
-        );
-        console.log(
-          "get-bonded result:",
-          JSON.stringify(cvToJSON(bonded.result), null, 2)
-        );
-        console.log("get-bonded type:", bonded.result.type);
-        console.log(
-          "get-bonded success:",
-          bonded.result.type !== ClarityType.ResponseErr
-        );
-      } catch (error) {
-        console.log("get-bonded ERROR:", error.message);
-      }
-
-      // Test get-in method (used in DEX trading)
-      try {
-        const getIn = simnet.callReadOnlyFn(
-          TEST_DEX_CONTRACT,
-          "get-in",
-          [uintCV(47000)], // Test with sample amount
-          deployer
-        );
-        console.log(
-          "get-in result:",
-          JSON.stringify(cvToJSON(getIn.result), null, 2)
-        );
-        console.log("get-in type:", getIn.result.type);
-        console.log(
-          "get-in success:",
-          getIn.result.type !== ClarityType.ResponseErr
-        );
-      } catch (error) {
-        console.log("get-in ERROR:", error.message);
-      }
-
-      console.log("=== END CONTRACT DEBUG ===");
-    });
-
-    it("DEBUG: Single swap after prelaunch completion", () => {
-      console.log("=== SINGLE SWAP DEBUG ===");
-
-      // Complete prelaunch with one agent first
-      const { result: firstResult } = simnet.callPublicFn(
-        BTC2AIBTC_CONTRACT,
-        "swap-btc-to-aibtc",
-        [
-          uintCV(50000),
-          uintCV(0),
-          uintCV(1),
-          principalCV(TEST_TOKEN_CONTRACT),
-          principalCV(TEST_DEX_CONTRACT),
-          principalCV(TEST_PRE_CONTRACT),
-          principalCV(TEST_POOL_CONTRACT),
-          principalCV(SBTC_TOKEN_CONTRACT),
-        ],
-        address1
+      // Get agent account for this owner
+      const agentLookupResult = simnet.callReadOnlyFn(
+        AGENT_REGISTRY_CONTRACT,
+        "get-agent-account-by-owner",
+        [principalCV(testOwner)],
+        deployer
       );
 
-      console.log("First swap result:", firstResult.type);
-      expect(firstResult.type).toBe(ClarityType.ResponseOk);
+      console.log("Agent lookup raw result:");
+      console.log("- Type:", agentLookupResult.result.type);
+      console.log(
+        "- JSON:",
+        JSON.stringify(cvToJSON(agentLookupResult.result), null, 2)
+      );
 
-      // Now check what methods return after first swap
+      // Try to extract the value different ways
       try {
-        const marketOpen = simnet.callReadOnlyFn(
-          TEST_PRE_CONTRACT,
-          "is-market-open",
-          [],
-          deployer
-        );
-        console.log("Market open after 1 swap:", cvToValue(marketOpen.result));
+        const cvValue = cvToValue(agentLookupResult.result);
+        console.log("- cvToValue result:", cvValue);
+        console.log("- cvToValue type:", typeof cvValue);
       } catch (error) {
-        console.log("Market check failed:", error.message);
+        console.log("- cvToValue error:", error.message);
       }
 
-      try {
-        const bonded = simnet.callReadOnlyFn(
-          TEST_DEX_CONTRACT,
-          "get-bonded",
-          [],
-          deployer
-        );
-        console.log("Bonded after 1 swap:", cvToValue(bonded.result));
-      } catch (error) {
-        console.log("Bonded check failed:", error.message);
-      }
+      // Test a simple swap with this owner to see what happens
+      console.log("\nTesting swap with this owner...");
 
-      // Try second swap with same agent (should still work)
       try {
-        const { result: secondResult } = simnet.callPublicFn(
+        const { result, events } = simnet.callPublicFn(
           BTC2AIBTC_CONTRACT,
           "swap-btc-to-aibtc",
           [
@@ -660,83 +574,520 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
             principalCV(TEST_POOL_CONTRACT),
             principalCV(SBTC_TOKEN_CONTRACT),
           ],
-          address1 // Same address
+          testOwner
         );
 
-        console.log("Second swap result:", secondResult.type);
-        if (secondResult.type === ClarityType.ResponseErr) {
-          console.log("Second swap error:", cvToValue(secondResult));
+        console.log("Swap result type:", result.type);
+        console.log("Swap success:", result.type === ClarityType.ResponseOk);
+
+        if (result.type === ClarityType.ResponseErr) {
+          const errorCode = cvToValue(result);
+          console.log("Swap error code:", errorCode);
         }
+
+        console.log("Number of events:", events.length);
       } catch (error) {
-        console.log("Second swap failed with runtime error:", error.message);
-
-        // This suggests the issue happens when market state changes
-        console.log(
-          "Likely issue: Market state transition causing method call failures"
-        );
+        console.log("Swap failed with error:", error.message);
       }
 
-      console.log("=== END SINGLE SWAP DEBUG ===");
-    });
-
-    it("DEBUG: Check contract method signatures", () => {
-      console.log("=== CONTRACT SIGNATURE DEBUG ===");
-
-      // Let's check what methods are actually available
-      const testMethods = [
-        "is-market-open",
-        "get-bonded",
-        "get-in",
-        "buy-up-to",
-        "get-seats-owned",
-      ];
-
-      for (const method of testMethods) {
-        try {
-          // Try calling each method to see if it exists
-          if (method === "is-market-open" || method === "get-bonded") {
-            const result = simnet.callReadOnlyFn(
-              method === "is-market-open"
-                ? TEST_PRE_CONTRACT
-                : TEST_DEX_CONTRACT,
-              method,
-              [],
-              deployer
-            );
-            console.log(`${method}: Available - ${result.result.type}`);
-          } else if (method === "get-in") {
-            const result = simnet.callReadOnlyFn(
-              TEST_DEX_CONTRACT,
-              method,
-              [uintCV(1000)],
-              deployer
-            );
-            console.log(`${method}: Available - ${result.result.type}`);
-          } else if (method === "get-seats-owned") {
-            const agentAccount = cvToValue(
-              simnet.callReadOnlyFn(
-                AGENT_REGISTRY_CONTRACT,
-                "get-agent-account-by-owner",
-                [principalCV(address1)],
-                deployer
-              ).result
-            ).value;
-            const result = simnet.callReadOnlyFn(
-              TEST_PRE_CONTRACT,
-              method,
-              [principalCV(agentAccount)],
-              deployer
-            );
-            console.log(`${method}: Available - ${result.result.type}`);
-          } else if (method === "buy-up-to") {
-            console.log(`${method}: Public function - cannot test directly`);
-          }
-        } catch (error) {
-          console.log(`${method}: NOT Available or Error - ${error.message}`);
-        }
-      }
-
-      console.log("=== END SIGNATURE DEBUG ===");
+      console.log("=== END DEBUG ===");
     });
   });
+
+  describe("Prelaunch Completion Test", () => {
+    beforeEach(() => {
+      fundBridgePool(690000000);
+      setupAllowedDex(1);
+    });
+
+    it("Complete prelaunch - all 10 agents buy 2 seats to open market", () => {
+      // Correct owner → agent mapping
+      const agentOwners = [
+        "ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5", // an-agent
+        "ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG", // an-agent-2
+        "ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC", // an-agent-3
+        "ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND", // an-agent-4
+        "ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB", // an-agent-5
+        "ST3AM1A56AK2C1XAFJ4115ZSV26EB49BVQ10MGCS0", // an-agent-6
+        "ST3PF13W7Z0RRM42A8VZRVFQ75SV1K26RXEP8YGKJ", // an-agent-7
+        "ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP", // an-agent-8
+        "ST1R1061ZT6KPJXQ7PAXPFB6ZAZ6ZWW28G8HXK9G5", // an-agent-9
+        "ST1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE", // an-agent-10
+      ];
+
+      const btcAmount = 50000;
+      const expectedSeatsPerAgent = 2;
+      const totalExpectedSeats = agentOwners.length * expectedSeatsPerAgent; // 20 seats
+
+      console.log(`=== PRELAUNCH COMPLETION TEST ===`);
+      console.log(
+        `Target: ${totalExpectedSeats} seats (${agentOwners.length} agents × ${expectedSeatsPerAgent} seats)`
+      );
+
+      // Check initial market state
+      const initialMarketOpen = simnet.callReadOnlyFn(
+        TEST_PRE_CONTRACT,
+        "is-market-open",
+        [],
+        deployer
+      );
+      console.log(
+        `Initial market open: ${cvToValue(initialMarketOpen.result).value}`
+      );
+      expect(cvToValue(initialMarketOpen.result).value).toBe(false);
+
+      let totalSwaps = 0;
+      let totalSeatsVerified = 0;
+
+      // Execute swaps for each agent using their correct owner
+      for (let i = 0; i < agentOwners.length; i++) {
+        const owner = agentOwners[i];
+        console.log(`Processing agent ${i + 1} (owner: ${owner})`);
+
+        // Execute swap by the correct owner
+        const { result, events } = simnet.callPublicFn(
+          BTC2AIBTC_CONTRACT,
+          "swap-btc-to-aibtc",
+          [
+            uintCV(btcAmount),
+            uintCV(0), // min-amount-out
+            uintCV(1), // dex-id
+            principalCV(TEST_TOKEN_CONTRACT),
+            principalCV(TEST_DEX_CONTRACT),
+            principalCV(TEST_PRE_CONTRACT),
+            principalCV(TEST_POOL_CONTRACT),
+            principalCV(SBTC_TOKEN_CONTRACT),
+          ],
+          owner
+        );
+
+        // Verify swap succeeded
+        expect(result.type).toBe(ClarityType.ResponseOk);
+
+        // Get the agent account for this owner
+        const agentLookup = simnet.callReadOnlyFn(
+          AGENT_REGISTRY_CONTRACT,
+          "get-agent-account-by-owner",
+          [principalCV(owner)],
+          deployer
+        );
+
+        if (agentLookup.result.type === ClarityType.OptionalSome) {
+          // Extract the agent account address correctly
+          const agentData = cvToValue(agentLookup.result);
+          const agentAccount = agentData.value; // This is the principal string
+
+          console.log(`  Agent account: ${agentAccount}`);
+
+          // Verify seat purchase
+          const seatInfo = simnet.callReadOnlyFn(
+            TEST_PRE_CONTRACT,
+            "get-seats-owned",
+            [principalCV(agentAccount)],
+            deployer
+          );
+
+          if (seatInfo.result.type === ClarityType.ResponseOk) {
+            const seatData = cvToValue(seatInfo.result);
+            const seatsOwned = parseInt(seatData.value["seats-owned"].value);
+            totalSeatsVerified += seatsOwned;
+            console.log(`  Seats owned: ${seatsOwned}`);
+
+            expect(seatsOwned).toBe(expectedSeatsPerAgent);
+          } else {
+            console.log(`  Could not verify seats - seat lookup failed`);
+          }
+        } else {
+          console.log(`  No agent account found for owner ${owner}`);
+          expect(agentLookup.result.type).toBe(ClarityType.OptionalSome);
+        }
+
+        totalSwaps++;
+
+        // Check market state after each swap
+        const currentMarketOpen = simnet.callReadOnlyFn(
+          TEST_PRE_CONTRACT,
+          "is-market-open",
+          [],
+          deployer
+        );
+        const marketOpen = cvToValue(currentMarketOpen.result).value;
+        console.log(`  After ${totalSwaps} swaps - Market open: ${marketOpen}`);
+      }
+
+      // Final verification
+      expect(totalSwaps).toBe(10);
+      expect(totalSeatsVerified).toBe(totalExpectedSeats);
+
+      // Check final market state - should be open after all 20 seats are bought
+      const finalMarketOpen = simnet.callReadOnlyFn(
+        TEST_PRE_CONTRACT,
+        "is-market-open",
+        [],
+        deployer
+      );
+      const finalMarketState = cvToValue(finalMarketOpen.result).value;
+
+      console.log(`=== FINAL RESULTS ===`);
+      console.log(`Total swaps completed: ${totalSwaps}`);
+      console.log(
+        `Total seats verified: ${totalSeatsVerified}/${totalExpectedSeats}`
+      );
+      console.log(`Final market open: ${finalMarketState}`);
+
+      // This is the key test - market should be open after all seats are bought
+      expect(finalMarketState).toBe(true);
+
+      // Verify pool balance decreased correctly
+      const finalPoolStatus = simnet.callReadOnlyFn(
+        BTC2AIBTC_CONTRACT,
+        "get-pool",
+        [],
+        deployer
+      );
+      const finalPool = cvToValue(finalPoolStatus.result);
+      const finalAvailable = parseInt(finalPool.value["available-sbtc"].value);
+      const expectedDecrease = totalSwaps * btcAmount; // 500,000 sats
+      const expectedFinalBalance = 690000000 - expectedDecrease;
+
+      expect(finalAvailable).toBe(expectedFinalBalance);
+      console.log(
+        `Pool balance: 690,000,000 → ${finalAvailable} (-${expectedDecrease})`
+      );
+
+      console.log(`✓ Prelaunch phase completed successfully!`);
+      console.log(`✓ Market is now open for DEX trading`);
+    });
+  });
+  // describe("Full Lifecycle Coverage - Working", () => {
+  //   beforeEach(() => {
+  //     fundBridgePool(690000000);
+  //     setupAllowedDex(1);
+  //   });
+
+  //   it("Multi-agent prelaunch completion - using existing wallet addresses", () => {
+  //     // Use actual simnet wallet addresses that exist
+  //     const agentOwners = [
+  //       address1, // wallet_1
+  //       address2, // wallet_2
+  //       address3, // wallet_3
+  //       address4, // wallet_4
+  //       address5, // wallet_5
+  //       address6, // wallet_6
+  //       address7, // wallet_7
+  //       address8, // wallet_8
+  //       address9, // wallet_9
+  //       address10, // wallet_10
+  //     ];
+
+  //     const btcAmount = 50000;
+  //     const expectedSeats = 2;
+  //     const expectedTotalSeats = agentOwners.length * expectedSeats; // 20 seats total
+
+  //     console.log(`=== MULTI-AGENT PRELAUNCH TEST ===`);
+  //     console.log(
+  //       `Testing ${agentOwners.length} agents buying ${expectedSeats} seats each`
+  //     );
+
+  //     let totalSwaps = 0;
+  //     let totalSeatsVerified = 0;
+
+  //     // Execute swaps for all 10 agents using existing addresses
+  //     for (let i = 0; i < agentOwners.length; i++) {
+  //       const owner = agentOwners[i];
+  //       const agentNumber = i + 1;
+
+  //       console.log(`Processing agent ${agentNumber}: ${owner}`);
+
+  //       // Execute swap
+  //       const { result, events } = simnet.callPublicFn(
+  //         BTC2AIBTC_CONTRACT,
+  //         "swap-btc-to-aibtc",
+  //         [
+  //           uintCV(btcAmount),
+  //           uintCV(0), // min-amount-out
+  //           uintCV(1), // dex-id
+  //           principalCV(TEST_TOKEN_CONTRACT),
+  //           principalCV(TEST_DEX_CONTRACT),
+  //           principalCV(TEST_PRE_CONTRACT),
+  //           principalCV(TEST_POOL_CONTRACT),
+  //           principalCV(SBTC_TOKEN_CONTRACT),
+  //         ],
+  //         owner
+  //       );
+
+  //       // Verify swap succeeded
+  //       expect(result.type).toBe(ClarityType.ResponseOk);
+
+  //       // Get agent account for this owner and verify seats
+  //       const agentAccountResult = simnet.callReadOnlyFn(
+  //         AGENT_REGISTRY_CONTRACT,
+  //         "get-agent-account-by-owner",
+  //         [principalCV(owner)],
+  //         deployer
+  //       );
+
+  //       if (agentAccountResult.result.type === ClarityType.ResponseOk) {
+  //         const agentAccount = cvToValue(agentAccountResult.result).value;
+
+  //         // Verify seat purchase
+  //         const seatInfo = simnet.callReadOnlyFn(
+  //           TEST_PRE_CONTRACT,
+  //           "get-seats-owned",
+  //           [principalCV(agentAccount)],
+  //           deployer
+  //         );
+
+  //         const seatData = cvToValue(seatInfo.result);
+  //         const seatsOwned = parseInt(seatData.value["seats-owned"].value);
+  //         totalSeatsVerified += seatsOwned;
+
+  //         console.log(`Agent ${agentNumber}: ${seatsOwned} seats purchased`);
+  //       } else {
+  //         console.log(
+  //           `Agent ${agentNumber}: No agent account found, but swap succeeded`
+  //         );
+  //         totalSeatsVerified += expectedSeats; // Assume seats were purchased
+  //       }
+
+  //       totalSwaps++;
+  //     }
+
+  //     // Final verification
+  //     expect(totalSwaps).toBe(10);
+
+  //     // Check pool balance decreased correctly
+  //     const finalPoolStatus = simnet.callReadOnlyFn(
+  //       BTC2AIBTC_CONTRACT,
+  //       "get-pool",
+  //       [],
+  //       deployer
+  //     );
+
+  //     const finalPool = cvToValue(finalPoolStatus.result);
+  //     const finalAvailable = parseInt(finalPool.value["available-sbtc"].value);
+  //     const expectedPoolDecrease = totalSwaps * btcAmount; // 500,000 sats total
+  //     const expectedFinalBalance = 690000000 - expectedPoolDecrease; // 689,500,000
+
+  //     expect(finalAvailable).toBe(expectedFinalBalance);
+
+  //     console.log(
+  //       `✓ All ${totalSwaps} agents completed prelaunch successfully`
+  //     );
+  //     console.log(`✓ Total seats purchased: ${totalSeatsVerified}`);
+  //     console.log(
+  //       `✓ Pool balance: ${690000000} → ${finalAvailable} (-${expectedPoolDecrease})`
+  //     );
+  //     console.log(`✓ Prelaunch phase ready for next stage`);
+  //   });
+
+  //   it("DEX phase trading - after prelaunch completion", () => {
+  //     // First complete prelaunch with existing agents
+  //     const agentOwners = [
+  //       address1,
+  //       address2,
+  //       address3,
+  //       address4,
+  //       address5,
+  //       address6,
+  //       address7,
+  //       address8,
+  //       address9,
+  //       address10,
+  //     ];
+
+  //     console.log(`=== DEX PHASE TRADING TEST ===`);
+  //     console.log(
+  //       `First completing prelaunch with ${agentOwners.length} agents...`
+  //     );
+
+  //     // Complete prelaunch phase
+  //     for (const owner of agentOwners) {
+  //       const result = simnet.callPublicFn(
+  //         BTC2AIBTC_CONTRACT,
+  //         "swap-btc-to-aibtc",
+  //         [
+  //           uintCV(50000),
+  //           uintCV(0),
+  //           uintCV(1),
+  //           principalCV(TEST_TOKEN_CONTRACT),
+  //           principalCV(TEST_DEX_CONTRACT),
+  //           principalCV(TEST_PRE_CONTRACT),
+  //           principalCV(TEST_POOL_CONTRACT),
+  //           principalCV(SBTC_TOKEN_CONTRACT),
+  //         ],
+  //         owner
+  //       );
+  //       expect(result.result.type).toBe(ClarityType.ResponseOk);
+  //     }
+
+  //     console.log(`Prelaunch completed. Testing DEX trading...`);
+
+  //     // Check market state
+  //     const marketOpen = simnet.callReadOnlyFn(
+  //       TEST_PRE_CONTRACT,
+  //       "is-market-open",
+  //       [],
+  //       deployer
+  //     );
+  //     const dexBonded = simnet.callReadOnlyFn(
+  //       TEST_DEX_CONTRACT,
+  //       "get-bonded",
+  //       [],
+  //       deployer
+  //     );
+
+  //     console.log(`Market open: ${cvToValue(marketOpen.result)}`);
+  //     console.log(`DEX bonded: ${cvToValue(dexBonded.result)}`);
+
+  //     // Large purchase to move through DEX phase
+  //     const largePurchase = 1000000; // 1M sats (more manageable test size)
+  //     const expectedFees = Math.max(3000, Math.floor(largePurchase * 0.01)); // max(3k, 1%)
+
+  //     console.log(
+  //       `Testing DEX purchase: ${largePurchase} sats (fees: ${expectedFees})`
+  //     );
+
+  //     // Execute DEX phase purchase
+  //     const { result, events } = simnet.callPublicFn(
+  //       BTC2AIBTC_CONTRACT,
+  //       "swap-btc-to-aibtc",
+  //       [
+  //         uintCV(largePurchase),
+  //         uintCV(0), // min-amount-out
+  //         uintCV(1), // dex-id
+  //         principalCV(TEST_TOKEN_CONTRACT),
+  //         principalCV(TEST_DEX_CONTRACT),
+  //         principalCV(TEST_PRE_CONTRACT),
+  //         principalCV(TEST_POOL_CONTRACT),
+  //         principalCV(SBTC_TOKEN_CONTRACT),
+  //       ],
+  //       address2 // Use different agent for large purchase
+  //     );
+
+  //     // Verify DEX purchase succeeded
+  //     expect(result.type).toBe(ClarityType.ResponseOk);
+
+  //     const transferEvents = events.filter(
+  //       (e) => e.event === "ft_transfer_event"
+  //     );
+  //     console.log(`DEX trade events: ${transferEvents.length}`);
+
+  //     console.log(`✓ DEX phase trading completed successfully`);
+  //     console.log(`✓ Ready for AMM pool phase`);
+  //   });
+
+  //   it("Market state transitions - track phase changes", () => {
+  //     console.log(`=== MARKET STATE TRANSITIONS TEST ===`);
+
+  //     // Initial state
+  //     let marketOpen = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_PRE_CONTRACT, "is-market-open", [], deployer)
+  //         .result
+  //     );
+  //     let dexBonded = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_DEX_CONTRACT, "get-bonded", [], deployer)
+  //         .result
+  //     );
+
+  //     console.log(`Initial - Market: ${marketOpen}, Bonded: ${dexBonded}`);
+
+  //     // After 1 swap
+  //     simnet.callPublicFn(
+  //       BTC2AIBTC_CONTRACT,
+  //       "swap-btc-to-aibtc",
+  //       [
+  //         uintCV(50000),
+  //         uintCV(0),
+  //         uintCV(1),
+  //         principalCV(TEST_TOKEN_CONTRACT),
+  //         principalCV(TEST_DEX_CONTRACT),
+  //         principalCV(TEST_PRE_CONTRACT),
+  //         principalCV(TEST_POOL_CONTRACT),
+  //         principalCV(SBTC_TOKEN_CONTRACT),
+  //       ],
+  //       address1
+  //     );
+
+  //     marketOpen = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_PRE_CONTRACT, "is-market-open", [], deployer)
+  //         .result
+  //     );
+  //     dexBonded = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_DEX_CONTRACT, "get-bonded", [], deployer)
+  //         .result
+  //     );
+
+  //     console.log(`After 1 swap - Market: ${marketOpen}, Bonded: ${dexBonded}`);
+
+  //     // After 5 swaps
+  //     for (let i = 0; i < 4; i++) {
+  //       const owner =
+  //         i < 4 ? [address2, address3, address4, address5][i] : address1;
+  //       simnet.callPublicFn(
+  //         BTC2AIBTC_CONTRACT,
+  //         "swap-btc-to-aibtc",
+  //         [
+  //           uintCV(50000),
+  //           uintCV(0),
+  //           uintCV(1),
+  //           principalCV(TEST_TOKEN_CONTRACT),
+  //           principalCV(TEST_DEX_CONTRACT),
+  //           principalCV(TEST_PRE_CONTRACT),
+  //           principalCV(TEST_POOL_CONTRACT),
+  //           principalCV(SBTC_TOKEN_CONTRACT),
+  //         ],
+  //         owner
+  //       );
+  //     }
+
+  //     marketOpen = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_PRE_CONTRACT, "is-market-open", [], deployer)
+  //         .result
+  //     );
+  //     dexBonded = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_DEX_CONTRACT, "get-bonded", [], deployer)
+  //         .result
+  //     );
+
+  //     console.log(
+  //       `After 5 swaps - Market: ${marketOpen}, Bonded: ${dexBonded}`
+  //     );
+
+  //     // Large purchase to test DEX transition
+  //     const result = simnet.callPublicFn(
+  //       BTC2AIBTC_CONTRACT,
+  //       "swap-btc-to-aibtc",
+  //       [
+  //         uintCV(2000000),
+  //         uintCV(0),
+  //         uintCV(1),
+  //         principalCV(TEST_TOKEN_CONTRACT),
+  //         principalCV(TEST_DEX_CONTRACT),
+  //         principalCV(TEST_PRE_CONTRACT),
+  //         principalCV(TEST_POOL_CONTRACT),
+  //         principalCV(SBTC_TOKEN_CONTRACT),
+  //       ],
+  //       address6
+  //     );
+
+  //     expect(result.result.type).toBe(ClarityType.ResponseOk);
+
+  //     marketOpen = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_PRE_CONTRACT, "is-market-open", [], deployer)
+  //         .result
+  //     );
+  //     dexBonded = cvToValue(
+  //       simnet.callReadOnlyFn(TEST_DEX_CONTRACT, "get-bonded", [], deployer)
+  //         .result
+  //     );
+
+  //     console.log(
+  //       `After large purchase - Market: ${marketOpen}, Bonded: ${dexBonded}`
+  //     );
+
+  //     console.log(`✓ Market state transitions tracked successfully`);
+  //     console.log(`✓ All phases accessible and functional`);
+  //   });
+  // });
 });
