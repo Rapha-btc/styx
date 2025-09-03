@@ -163,7 +163,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
       setupAllowedDex(1);
     });
 
-    it("DEBUG: Check swap response format", () => {
+    it("DEBUG: Check swap response format with balance verification", () => {
       const btcAmount = 50000;
       const minAmountOut = 0;
       const dexId = 1;
@@ -174,6 +174,24 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
       const poolContract = principalCV(TEST_POOL_CONTRACT);
       const sbtcContract = principalCV(SBTC_TOKEN_CONTRACT);
 
+      // Get AI agent account before swap
+      const agentAccountBefore = simnet.callReadOnlyFn(
+        AGENT_REGISTRY_CONTRACT,
+        "get-agent-account-by-owner",
+        [principalCV(address1)],
+        deployer
+      );
+
+      // Get AI agent's sBTC balance BEFORE swap
+      const agentAccount = cvToValue(agentAccountBefore.result).value;
+      const sbtcBalanceBefore = simnet.callReadOnlyFn(
+        SBTC_TOKEN_CONTRACT,
+        "get-balance",
+        [principalCV(agentAccount)],
+        deployer
+      );
+
+      // Execute the swap
       const { result, events } = simnet.callPublicFn(
         BTC2AIBTC_CONTRACT,
         "swap-btc-to-aibtc",
@@ -190,35 +208,78 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         address1
       );
 
-      // Use expect.fail to show debug info
-      expect.fail(`=== SWAP DEBUG INFO ===
-Result type: ${result.type}
-Result JSON: ${JSON.stringify(cvToJSON(result), null, 2)}
-Result value: ${
-        result.type === ClarityType.ResponseOk
-          ? JSON.stringify(cvToValue(result), null, 2)
-          : "N/A"
-      }
-Number of events: ${events.length}
-Event types: ${JSON.stringify(
-        events.map((e) => e.event),
-        null,
-        2
-      )}
-Print events: ${JSON.stringify(
-        events
-          .filter((e) => e.event === "print_event")
-          .map((e) => ({
-            event: e.event,
-            data: e.data && e.data.value ? cvToJSON(e.data.value as any) : null,
-          })),
-        null,
-        2
-      )}
-Transfer events: ${JSON.stringify(
-        events.filter((e) => e.event === "ft_transfer_event").length
-      )}
-=== END DEBUG ===`);
+      // Get AI agent's sBTC balance AFTER swap
+      const sbtcBalanceAfter = simnet.callReadOnlyFn(
+        SBTC_TOKEN_CONTRACT,
+        "get-balance",
+        [principalCV(agentAccount)],
+        deployer
+      );
+
+      // Get seat information from prelaunch contract
+      const seatInfo = simnet.callReadOnlyFn(
+        TEST_PRE_CONTRACT,
+        "get-seats-owned",
+        [principalCV(agentAccount)],
+        deployer
+      );
+
+      // Calculate expected values
+      const fee = 3000; // 6% of 50000
+      const sbtcToUser = btcAmount - fee; // 47000
+      const expectedSeats = Math.floor(sbtcToUser / 20000); // 2 seats
+      const expectedChange = sbtcToUser - expectedSeats * 20000; // 7000
+
+      const beforeBalance = cvToValue(sbtcBalanceBefore.result);
+      const afterBalance = cvToValue(sbtcBalanceAfter.result);
+      const actualChange = afterBalance.value - beforeBalance.value;
+
+      // Proper test assertions
+      console.log(`=== SWAP SUCCESS - All Validations Pass ===`);
+      console.log(
+        `BTC Amount: ${btcAmount} → After fees: ${sbtcToUser} → Seats: ${expectedSeats} → Change: ${expectedChange}`
+      );
+      console.log(
+        `AI Agent Balance: ${beforeBalance.value} → ${afterBalance.value} (change: ${actualChange})`
+      );
+      console.log(
+        `Events: ${events.length} total (${
+          events.filter((e) => e.event === "print_event").length
+        } print, ${
+          events.filter((e) => e.event === "ft_transfer_event").length
+        } transfer)`
+      );
+
+      // Assert the swap succeeded
+      expect(result.type).toBe(ClarityType.ResponseOk);
+
+      // Assert correct change amount was transferred to AI agent
+      expect(actualChange).toBe(expectedChange);
+      expect(actualChange).toBe(7000);
+
+      // Assert correct number of seats were purchased
+      const seatData = cvToValue(seatInfo.result);
+      expect(seatData.value["seats-owned"].value).toBe("2");
+
+      // Assert correct number of events generated
+      expect(events.length).toBe(6);
+      expect(events.filter((e) => e.event === "print_event").length).toBe(2);
+      expect(events.filter((e) => e.event === "ft_transfer_event").length).toBe(
+        4
+      );
+
+      // Assert fee transfers happened correctly
+      const transferEvents = events.filter(
+        (e) => e.event === "ft_transfer_event"
+      );
+      expect(transferEvents[0].data.amount).toBe("1500"); // Service fee
+      expect(transferEvents[1].data.amount).toBe("1500"); // LP fee
+      expect(transferEvents[2].data.amount).toBe("40000"); // Seat purchase
+      expect(transferEvents[3].data.amount).toBe("7000"); // Change to agent
+
+      console.log(
+        `✓ All assertions passed - swap functionality works correctly!`
+      );
     });
   });
 
