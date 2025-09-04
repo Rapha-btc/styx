@@ -895,7 +895,7 @@ describe("Prelaunch Completion Test", () => {
     console.log(`\n=== SECOND DEX BUY - TARGETING 5M SATS ===`);
 
     const secondDexBuyer = address2;
-    const secondDexAmount = 500000; // Close to 5M target minus fees
+    const secondDexAmount = 4796000; // Close to 5M target minus fees
 
     console.log(
       `Attempting second DEX buy: ${secondDexAmount} sats by ${secondDexBuyer}`
@@ -948,9 +948,9 @@ describe("Prelaunch Completion Test", () => {
 
     // ===== POOL BUY TEST - DIRECT POOL PURCHASE =====
     console.log(`\n=== POOL BUY TEST - DIRECT POOL PURCHASE ===`);
-
+    471.33;
     const poolBuyer = address3; // Use a different address
-    const poolAmount = 200000; // 200k sats
+    const poolAmount = 800000; // 200k sats
 
     console.log(`Attempting pool buy: ${poolAmount} sats by ${poolBuyer}`);
 
@@ -1008,6 +1008,187 @@ describe("Prelaunch Completion Test", () => {
         console.log(`Unknown error type:`, typeof error);
       }
     }
+
+    // ===== POOL BUY TEST - DIRECT POOL PURCHASE =====
+    console.log(`\n=== POOL BUY TEST - DIRECT POOL PURCHASE ===`);
+
+    const poolBuyer2 = address4; // Use a different address
+    const poolAmount2 = 400000; // 200k sats
+
+    console.log(`Attempting pool buy: ${poolAmount2} sats by ${poolBuyer2}`);
+
+    // For pool buy, we might need to call a different function or use different parameters
+    // This depends on your contract's logic for determining pool vs DEX routing
+    try {
+      const poolSwapResult2 = simnet.callPublicFn(
+        BTC2AIBTC_CONTRACT,
+        "swap-btc-to-aibtc",
+        [
+          uintCV(poolAmount),
+          uintCV(0), // min-amount-out
+          uintCV(1), // dex-id
+          principalCV(TEST_TOKEN_CONTRACT),
+          principalCV(TEST_DEX_CONTRACT),
+          principalCV(TEST_PRE_CONTRACT),
+          principalCV(TEST_POOL_CONTRACT),
+          principalCV(SBTC_TOKEN_CONTRACT),
+        ],
+        poolBuyer
+      );
+
+      console.log(`Pool swap result type: ${poolSwapResult2.result.type}`);
+      console.log(`Pool swap events: ${poolSwapResult2.events.length}`);
+
+      if (poolSwapResult2.result.type === ClarityType.ResponseOk) {
+        console.log(`✓ Pool buy succeeded!`);
+
+        // Check if user received sBTC directly (pool buy behavior)
+        const userBalance2 = simnet.callReadOnlyFn(
+          SBTC_TOKEN_CONTRACT,
+          "get-balance",
+          [principalCV(poolBuyer2)],
+          deployer
+        );
+
+        const balance = cvToValue(userBalance2.result);
+        console.log(`User balance after pool buy: ${balance.value} sats`);
+
+        expect(poolSwapResult2.result.type).toBe(ClarityType.ResponseOk);
+      } else {
+        const errorCode = cvToValue(poolSwapResult2.result);
+        console.log(`✗ Pool buy failed with error: ${errorCode.value}`);
+      }
+    } catch (error: unknown) {
+      console.log(`Pool buy error:`, error);
+
+      if (error instanceof Error) {
+        console.log(`Error message:`, error.message);
+
+        if (error.message.includes("ReturnTypesMustMatch")) {
+          console.log(`Confirmed: Return type mismatch on pool buy`);
+        }
+      } else {
+        console.log(`Unknown error type:`, typeof error);
+      }
+    }
+
+    // Add this after your existing pool buy tests
+    console.log(`\n=== BALANCE ANALYSIS - WHO PROVIDED THE LIQUIDITY? ===`);
+
+    // 1. Check bridge contract sBTC balance (the "pool")
+    const bridgeSbtcBalance = simnet.callReadOnlyFn(
+      SBTC_TOKEN_CONTRACT,
+      "get-balance",
+      [principalCV(`${deployer}.${BTC2AIBTC_CONTRACT}`)], // Bridge contract principal
+      deployer
+    );
+
+    console.log(`Bridge Contract sBTC Balance:`);
+    console.log(
+      `  Current balance: ${cvToValue(
+        bridgeSbtcBalance.result
+      ).value.toLocaleString()} sats`
+    );
+    console.log(`  Started with: 690,000,000 sats`);
+    console.log(
+      `  Used from bridge: ${(
+        690000000 - cvToValue(bridgeSbtcBalance.result).value
+      ).toLocaleString()} sats`
+    );
+
+    // 2. Check DEX contract sBTC balance
+    const dexSbtcBalance = simnet.callReadOnlyFn(
+      SBTC_TOKEN_CONTRACT,
+      "get-balance",
+      [principalCV(TEST_DEX_CONTRACT)],
+      deployer
+    );
+
+    // 3. Check DEX contract token balance
+    const dexTokenBalance = simnet.callReadOnlyFn(
+      TEST_TOKEN_CONTRACT,
+      "get-balance",
+      [principalCV(TEST_DEX_CONTRACT)],
+      deployer
+    );
+
+    console.log(`\nDEX Contract Balances:`);
+    console.log(
+      `  sBTC balance: ${cvToValue(
+        dexSbtcBalance.result
+      ).value.toLocaleString()} sats`
+    );
+    console.log(
+      `  Token balance: ${cvToValue(
+        dexTokenBalance.result
+      ).value.toLocaleString()}`
+    );
+
+    // 4. Check XYK Pool contract sBTC balance (the actual DEX pool)
+    const poolSbtcBalance = simnet.callReadOnlyFn(
+      SBTC_TOKEN_CONTRACT,
+      "get-balance",
+      [principalCV(TEST_POOL_CONTRACT)],
+      deployer
+    );
+
+    const poolTokenBalance = simnet.callReadOnlyFn(
+      TEST_TOKEN_CONTRACT,
+      "get-balance",
+      [principalCV(TEST_POOL_CONTRACT)],
+      deployer
+    );
+
+    console.log(`\nXYK Pool Contract Balances:`);
+    console.log(
+      `  sBTC balance: ${cvToValue(
+        poolSbtcBalance.result
+      ).value.toLocaleString()} sats`
+    );
+    console.log(
+      `  Token balance: ${cvToValue(
+        poolTokenBalance.result
+      ).value.toLocaleString()}`
+    );
+
+    // 5. Expected vs Actual Analysis
+    const bridgeUsed = 690000000 - cvToValue(bridgeSbtcBalance.result).value;
+    const expectedFromBridge = 500000; // Only prelaunch should use bridge pool
+
+    console.log(`\n=== TRANSACTION ANALYSIS ===`);
+    console.log(
+      `Expected bridge usage: ${expectedFromBridge.toLocaleString()} sats (prelaunch only)`
+    );
+    console.log(`Actual bridge usage: ${bridgeUsed.toLocaleString()} sats`);
+
+    // 6. Determine what actually happened
+    const extraBridgeUsage = bridgeUsed - expectedFromBridge;
+
+    if (extraBridgeUsage > 0) {
+      console.log(
+        `\n🔍 ANALYSIS: Bridge was used for ${extraBridgeUsage.toLocaleString()} extra sats`
+      );
+      console.log(
+        `This suggests your "pool buys" actually DID come from the bridge, not DEX!`
+      );
+      console.log(`✓ The missing DEX logs confirm they bypassed DEX routing`);
+    } else if (extraBridgeUsage === 0) {
+      console.log(`\n🔍 ANALYSIS: Only prelaunch used bridge`);
+      console.log(
+        `All other transactions (including "pool buys") came from DEX liquidity`
+      );
+      console.log(`? Why do pool buys have different event counts then?`);
+    } else {
+      console.log(
+        `\n🔍 ANALYSIS: Something unexpected - bridge usage is less than prelaunch?`
+      );
+    }
+
+    console.log(`\n=== CONCLUSION ===`);
+    console.log(`Bridge balance change: ${bridgeUsed.toLocaleString()} sats`);
+    console.log(
+      `Pool buys are ${extraBridgeUsage > 0 ? "FROM BRIDGE" : "FROM DEX"}`
+    );
   });
 
   // describe("DEX Phase After Prelaunch", () => {
