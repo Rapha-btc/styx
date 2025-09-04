@@ -58,7 +58,7 @@ The test suite covers 11 comprehensive test cases organized into 6 main categori
 **Input**: 50,000 sats BTC deposit for 1 agent
 **Expected Flow**:
 
-1. **Fee Calculation**: 6% total fee = 3,000 sats
+1. **Fee Calculation**: max of 3,000 sats and 1%
    - 1,500 sats → Service provider
    - 1,500 sats → LP operator
 2. **After Fees**: 47,000 sats available for user
