@@ -1,8 +1,3 @@
-;; SP3H6XX8W8MC3DXFN7H4D95X993D29XW5RGEJRXW2.btc2aibtc
-
-;; Btc2Sbtc.com Pool structure to track sBTC liquidity
-;; Trustless one-way bridge from Bitcoin to AI Economies on BTC 
-;; Ultra-fast passage via Clarity's direct Bitcoin state reading
 (use-trait faktory-token 'SP3XXMS38VTAWTVPE5682XSBFXPTH7XCPEBTX8AN2.faktory-trait-v1.sip-010-trait) 
 (use-trait faktory-pre 'SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.prelaunch-faktory-trait.prelaunch-trait)
 (use-trait faktory-dex 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22.faktory-dex-trait.dex-trait) 
@@ -52,8 +47,8 @@
 (define-constant APPROVAL_WINDOW u1008) 
 (define-constant SIGNALS_REQUIRED u2)   
 
-(define-constant OPERATOR_STYX 'SP3H6XX8W8MC3DXFN7H4D95X993D29XW5RGEJRXW2) ;; only 1 pool per operator else double spending 
-(define-constant SERVICE_STYX 'SP3H6XX8W8MC3DXFN7H4D95X993D29XW5RGEJRXW2) ;; amend it for mainnet Rafa
+(define-constant OPERATOR_STYX 'SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988) ;; only 1 pool per operator else double spending 
+(define-constant SERVICE_STYX 'SMH8FRN30ERW1SX26NJTJCKTDR3H27NRJ6W75WQE) 
 (define-constant SBTC_CONTRACT 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token)
 (define-constant COOLDOWN u6)
 (define-constant MIN_SATS u10000)
@@ -65,8 +60,6 @@
 
 (define-constant PRICE-PER-SEAT u20000)
 
-
-;; ---- Data structures ----
 (define-data-var current-operator principal OPERATOR_STYX)
 
 (define-data-var processed-tx-count uint u1)
@@ -108,8 +101,6 @@
 
 (define-data-var next-proposal-id uint u1)
 
-;; ---- Allow list mechanism ----
-;;
 (define-read-only (is-approver (who principal))
   (or 
     (is-eq who 'SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22)
@@ -196,10 +187,8 @@
         (merge proposal { signals: new-signals })
       )
       
-      ;; Auto-execute if we have enough signals
       (if (>= new-signals SIGNALS_REQUIRED)
         (begin
-          ;; Store all four contracts using proposal-id as the key
           (map-set allowed-dexes proposal-id {
             ft-contract: (get ft-contract proposal),
             pre-contract: (get pre-contract proposal),
@@ -236,10 +225,8 @@
   )
 )
 
-;; Emergency pause flag - one way only
 (define-data-var swaps-paused bool false)
 
-;; Emergency stop - any approver can pause swaps permanently
 (define-public (emergency-stop-swaps)
   (begin
     (asserts! (is-approver tx-sender) ERR_NOT_APPROVER)
@@ -254,7 +241,6 @@
   )
 )
 
-;; Read-only function to check pause status
 (define-read-only (are-swaps-paused)
   (var-get swaps-paused)
 )
@@ -271,7 +257,6 @@
   (default-to false (map-get? proposal-signals { proposal-id: proposal-id, approver: approver }))
 )
 
-;; ---- Helper functions ----
 (define-read-only (read-uint64 (ctx {
   txbuff: (buff 4096),
   index: uint,
@@ -345,7 +330,6 @@
   }))
 )
 
-;; ---- Pool initialization ----
 (define-public (set-new-operator (new-operator principal))
   (begin
     (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
@@ -432,7 +416,6 @@
   )
 )
 
-;; this func without cool downs only adds liquidity - reserved
 (define-public (add-only-liquidity (sbtc-amount uint))
   (let (
       (current-pool (var-get pool))
@@ -518,8 +501,9 @@
   (let (
       (current-pool (var-get pool))
       (available-sbtc (get available-sbtc current-pool))
+      (curr-operator (var-get current-operator))
     )
-    (asserts! (is-eq tx-sender (var-get current-operator)) ERR_FORBIDDEN)
+    (asserts! (is-eq tx-sender curr-operator) ERR_FORBIDDEN)
     (asserts! (> available-sbtc u0) ERR_INSUFFICIENT_POOL_BALANCE)
     (match (get withdrawal-signaled-at current-pool)
       some-height (begin
@@ -533,7 +517,7 @@
           })
         )
         (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token
-          transfer available-sbtc tx-sender (var-get current-operator) none
+          transfer available-sbtc tx-sender curr-operator none
         )))
         (print {
           type: "withdraw-from-pool",
@@ -546,7 +530,6 @@
   )
 )
 
-;; ---- BTC processing functions ----
 (define-read-only (parse-payload-segwit (tx (buff 4096)))
   (match (get-output-segwit tx u0)
     result (let (
@@ -615,7 +598,6 @@
     parsed-result (let (
         (script (get scriptPubKey parsed-result))
         (script-len (len script))
-        ;; lenght is dynamic one or two bytes!
         (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4c)
           u3
           u2
@@ -635,7 +617,6 @@
     parsed-result (let (
         (script (get scriptPubKey parsed-result))
         (script-len (len script))
-        ;; lenght is dynamic one or two bytes!
         (offset (if (is-eq (unwrap! (element-at? script u1) ERR-ELEMENT-EXPECTED) 0x4c)
           u3
           u2
@@ -677,7 +658,6 @@
   )
 )
 
-;; Process a BTC deposit and release sBTC - by anyone
 (define-public (process-btc-deposit
     (height uint)
     (wtx {
@@ -764,7 +744,7 @@
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                             service-fee tx-sender SERVICE_STYX none)))
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            lp-fee tx-sender OPERATOR_STYX none)))            
+                                                            lp-fee tx-sender (var-get current-operator) none)))            
               (print {
                 type: "process-btc-deposit",
                 btc-tx-id: result,
@@ -869,7 +849,7 @@
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                             service-fee tx-sender SERVICE_STYX none)))
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            lp-fee tx-sender OPERATOR_STYX none)))
+                                                            lp-fee tx-sender (var-get current-operator) none)))
               (print {
                 type: "process-btc-deposit",
                 btc-tx-id: result,
@@ -892,7 +872,6 @@
   )
 )
 
-;; Process a BTC deposit to ai btc dao Tokens - by anyone
 (define-public (swap-btc-to-aibtc
     (height uint)
     (wtx {
@@ -1004,7 +983,7 @@
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                             service-fee tx-sender SERVICE_STYX none)))
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            lp-fee tx-sender OPERATOR_STYX none)))
+                                                            lp-fee tx-sender (var-get current-operator) none)))
                 (if bonded
                     (let ((ai-pool-allowed (get pool-contract dex-info)))
                         (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
@@ -1056,7 +1035,6 @@
     )
   )
 )
-
 
 (define-public (swap-btc-to-aibtc-legacy
     (height uint)
@@ -1165,7 +1143,7 @@
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
                                                             service-fee tx-sender SERVICE_STYX none)))
               (try! (as-contract (contract-call? 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token transfer 
-                                                            lp-fee tx-sender OPERATOR_STYX none)))
+                                                            lp-fee tx-sender (var-get current-operator) none)))
                 (if bonded
                     (let ((ai-pool-allowed (get pool-contract dex-info)))
                         (asserts! (is-eq (contract-of ai-pool) ai-pool-allowed) ERR-WRONG-POOL)
@@ -1218,7 +1196,6 @@
   )
 )
 
-;; ---- Read-only functions ----
 (define-read-only (get-pool)
   (ok (var-get pool))
 )
@@ -1234,15 +1211,14 @@
   )
 )
 
-;; ---- Edge case functions ----
 (define-map refund-requests
   uint
   {
-    btc-tx-id: (buff 128), ;; Original BTC transaction ID
+    btc-tx-id: (buff 128), 
     btc-tx-refund-id: (optional (buff 128)),
-    btc-amount: uint, ;; Original BTC amount
-    btc-receiver: (buff 40), ;; Where to send the BTC refund
-    stx-receiver: principal, ;; can only be requested by stx receiver
+    btc-amount: uint, 
+    btc-receiver: (buff 40), 
+    stx-receiver: principal, 
     requested-at: uint,
     done: bool,
   }
@@ -1350,7 +1326,6 @@
   )
 )
 
-;; Process a refund by providing proof of BTC return transaction
 (define-public (process-refund
     (refund-id uint)
     (height uint)
@@ -1427,7 +1402,7 @@
             )
             ERR_TX_VALUE_TOO_SMALL
           )
-          ERR_TX_NOT_SENT_TO_POOL ;; to btc-receiver
+          ERR_TX_NOT_SENT_TO_POOL
         )
       )
       error (err (* error u1000))
@@ -1435,7 +1410,6 @@
   )
 )
 
-;; Refund Legacy
 (define-public (request-refund-legacy
     (btc-refund-receiver (buff 40))
     (height uint)
@@ -1527,7 +1501,6 @@
   )
 )
 
-;; Process a refund by providing proof of BTC return transaction
 (define-public (process-refund-legacy
     (refund-id uint)
     (height uint)
@@ -1608,7 +1581,6 @@
   )
 )
 
-;; Read only functions
 (define-read-only (get-refund-request (refund-id uint))
   (match (map-get? refund-requests refund-id)
     refund (ok refund)
@@ -1631,7 +1603,6 @@
   (ok (var-get current-operator))
 )
 
-;; Add this initialization function
 (define-public (initialize-pool
     (sbtc-amount uint)
     (btc-receiver (buff 40))
@@ -1653,7 +1624,7 @@
             add-liq-signaled-at: none,
           })
         )
-        ;; Mark as initialized
+
         (var-set is-initialized true)
         
         (print {
@@ -1672,7 +1643,6 @@
   )
 )
 
-;; Add read-only function to check initialization status
 (define-read-only (is-pool-initialized)
   (ok (var-get is-initialized))
 )
