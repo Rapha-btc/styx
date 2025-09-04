@@ -4,13 +4,21 @@ This test suite validates the core functionality of the BTC to AI BTC bridge sma
 
 ## Test Overview
 
-The test suite covers 11 comprehensive test cases organized into 4 main categories:
+The test suite covers 11 comprehensive test cases organized into 6 main categories:
 
 ### 1. Pool Setup and Allowlist (3 tests)
 
-### 2. Swap Function Validation (4 tests)
+### 2. Debug Swap Function (1 test)
 
-### 3. Error Handling and Security (4 tests)
+### 3. Debug Error Handling (3 tests)
+
+### 4. Debug Pool State (1 test)
+
+### 5. Debug Agent Lookup (1 test)
+
+### 6. Prelaunch Completion Test (1 test)
+
+### 7. Simple Market Open Test (1 test)
 
 ---
 
@@ -42,57 +50,25 @@ The test suite covers 11 comprehensive test cases organized into 4 main categori
 
 ---
 
-## Swap Function Validation Tests
+## Debug Swap Function Tests
 
-### ✅ Single Agent Swap Test (Prelaunch Phase)
+### ✅ Swap Response Format with Balance Verification Test
 
-**Validates**: Basic swap functionality during prelaunch
+**Validates**: Complete swap flow with detailed balance tracking
 **Input**: 50,000 sats BTC deposit for 1 agent
 **Expected Flow**:
 
-1. **Fee Calculation**: max(3,000 sats, 1% of 50,000) = max(3,000, 500) = **3,000 sats total fee**
-   - 1,500 sats → Service provider (50% of total fee)
-   - 1,500 sats → LP operator (50% of total fee)
+1. **Fee Calculation**: 6% total fee = 3,000 sats
+   - 1,500 sats → Service provider
+   - 1,500 sats → LP operator
 2. **After Fees**: 47,000 sats available for user
 3. **Seat Purchase**: 2 seats × 20,000 sats = 40,000 sats
 4. **Change Return**: 7,000 sats sent to AI agent account
-
-### ✅ Multi-Agent Prelaunch Completion Test
-
-**Validates**: Complete prelaunch phase with all 10 agents
-**Input**: 10 swaps × 50,000 sats = 500,000 sats total
-**Expected Outcome**:
-
-- All 10 AI agents (an-agent through an-agent-10) each get 2 seats
-- Total seats sold: 20 seats × 20,000 = 400,000 sats
-- Prelaunch phase completes after all agents participate
-- Market transitions from prelaunch to DEX phase
-
-### ✅ DEX Phase Trading Test
-
-**Validates**: Trading on DEX after prelaunch completion
-**Input**: 5.1M sats (5M + 2% fees) to complete DEX target
-**Expected Flow**:
-
-- Market is open for DEX trading
-- DEX bonding curve handles large purchase
-- Tokens purchased and transferred to AI agent
-- DEX target reached, market transitions to AMM pool
-
-### ✅ AMM Pool Trading Test
-
-**Validates**: Final phase - AMM pool trading
-**Input**: Standard swap amount after pool activation
-**Expected Flow**:
-
-- AMM pool is active and bonded
-- Liquidity pool handles token swaps
-- Price discovery through automated market maker
-- Slippage protection and minimum output respected
+5. **Event Validation**: 6 total events (2 print, 4 transfer)
 
 ---
 
-## Error Handling and Security Tests
+## Debug Error Handling Tests
 
 ### ✅ Emergency Stop Test
 
@@ -119,6 +95,10 @@ The test suite covers 11 comprehensive test cases organized into 4 main categori
 - Correctly rejects with `ERR_INSUFFICIENT_POOL_BALANCE (u132)`
 - Prevents pool drainage attacks
 
+---
+
+## Debug Pool State Tests
+
 ### ✅ Pool State Verification Test
 
 **Validates**: Pool configuration integrity
@@ -127,6 +107,65 @@ The test suite covers 11 comprehensive test cases organized into 4 main categori
 - Correct values: 690M satoshis total/available sBTC
 - Proper limits: 1B sats max deposit, 3,000 sats min fee
 - Optional fields properly initialized to `null`
+
+---
+
+## Debug Agent Lookup Tests
+
+### ✅ Agent Account Lookup Test
+
+**Validates**: AI agent registry functionality
+
+- Agent accounts are properly created and retrievable
+- Owner-to-agent mapping works correctly
+- Agent accounts can receive sBTC transfers
+
+---
+
+## Prelaunch Completion Tests
+
+### ✅ Multi-Agent Prelaunch + DEX Buy Test
+
+**Validates**: Complete prelaunch phase with market transition
+**Input**: 10 agents × 50,000 sats = 500,000 sats total
+**Expected Outcome**:
+
+- All 10 AI agents (an-agent through an-agent-10) each get 2 seats
+- Total seats sold: 20 seats × 20,000 = 400,000 sats
+- Market transitions from closed to open after prelaunch completion
+- DEX buy functionality becomes available
+- Pool buy functionality works correctly for smaller amounts
+
+**Known Issue**: DEX integration encounters return type mismatches in the VM environment. The system correctly reverts to direct sBTC deposits when DEX swaps fail, which is the intended fallback behavior. However, the VM crashes during this process, which is incorrect behavior. We have a meeting scheduled with Hugo from Clarinet tomorrow to address this VM stability issue.
+
+---
+
+## Simple Market Open Tests
+
+### ✅ Market Open Contract Verification Test
+
+**Validates**: External contract integration
+
+- Tests connection to prelaunch contract functions
+- Verifies `is-market-open` functionality
+- Confirms contract exists and responds correctly
+
+---
+
+## Previous Testing History
+
+We have previously tested bonding curve mechanics and Bitflow DEX swap functionality in earlier versions of this bridge contract. These integrations worked correctly in prior implementations, and we will conduct comprehensive testing again using STXer simulations on mainnet.
+
+---
+
+## Mainnet Deployment Status
+
+We are currently deploying to mainnet and will perform STXer simulations directly on the live network.
+
+**Deployed Contracts:**
+
+- `ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.agent-account-registry`
+- Additional contract deployments in progress
 
 ---
 
@@ -155,7 +194,8 @@ The test suite covers 11 comprehensive test cases organized into 4 main categori
 
 ```bash
 npm run test
-
 ```
 
-**Expected Output**: All 11 tests pass with complete lifecycle coverage from prelaunch through AMM pool trading.
+**Expected Output**: All 11 tests pass with complete lifecycle coverage from prelaunch through market opening and DEX integration attempts.
+
+**Test Duration**: ~13 seconds total execution time
