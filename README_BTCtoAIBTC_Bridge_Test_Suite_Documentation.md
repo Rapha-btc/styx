@@ -171,10 +171,11 @@ We are currently deploying to mainnet and will perform STXer simulations directl
 
 ## Key Financial Validations
 
-### Fee Structure (6% Total)
+### Fee Structure
 
-- **3% Service Fee** → ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6
-- **3% LP Fee** → STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
+- **Total Fee**: max(3,000 sats, 1% of swap amount)
+- **Service Fee**: 50% of total fee → ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6
+- **LP Fee**: 50% of total fee → STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2
 
 ### Trading Phases
 
