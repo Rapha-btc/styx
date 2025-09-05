@@ -12,30 +12,31 @@ import * as fs from "fs";
 async function simulateFullBridgeDeployment() {
   // Use existing deployed contracts
   const BRIDGE_CONTRACT =
-    "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.btc2aibtc-sim";
+    "SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.btc2sbtc-simul"; // "SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988.btc2aibtc";
   const AGENT_REGISTRY =
-    "ST29D6YMDNAKN1P045T6Z817RTE1AC0JAAAG2EQZZ.agent-account-registry";
+    "SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.agent-account-registry";
 
   // Agent deployer (needs to deploy new agent contracts)
-  const AGENT_DEPLOYER = "ST1Q9YZ2NY4KVBB08E005HAK3FSM8S3RX2WARP9Q1";
+  const AGENT_DEPLOYER = "SP2Z94F6QX847PMXTPJJ2ZCCN79JZDW3PJ4E6ZABY";
 
   // Other addresses
-  const OPERATOR = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2";
-  const FUNDED_WALLET = "ST16PP6EYRCB7NCTGWAC73DH5X0KXWAPEQ8T45M1H";
+  const OPERATOR = "SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988"; // OPERATOR STYX of the bridge
+
+  const APPROVER1 = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22"; // APPROVER 1 of the bridge for indexing
 
   // Test addresses
-  const POOL_BUYER = "ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC";
-  const DEX_BUYER = "ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG";
+  const POOL_BUYER = "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J";
+  const DEX_BUYER = "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB";
 
   // Contract references (already deployed on mainnet)
-  const SBTC_TOKEN = "STV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RJ5XDY2.sbtc-token";
-  const TEST_TOKEN = "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.lemar1-faktory";
+  const SBTC_TOKEN = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token";
+  const TEST_TOKEN = "SP2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5E4R0JRM.fake2-faktory";
   const TEST_DEX =
-    "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.lemar1-faktory-dex";
+    "SP2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5E4R0JRM.fake2-faktory-dex";
   const TEST_PRE =
-    "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.lemar1-pre-faktory";
+    "SP2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5E4R0JRM.fake2-pre-faktory";
   const TEST_POOL =
-    "ST2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5EWQWKRW.xyk-pool-sbtc-lemar1-v-1-1";
+    "SP2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5E4R0JRM.xyk-pool-sbtc-fake2-v-1-1";
 
   const simulation = SimulationBuilder.new()
     .withSender(AGENT_DEPLOYER)
@@ -72,7 +73,7 @@ async function simulateFullBridgeDeployment() {
         principalCV(TEST_DEX),
         principalCV(TEST_POOL),
       ],
-      sender: OPERATOR,
+      sender: APPROVER1,
     })
 
     // 3. Signal approval for DEX (need second approver)
@@ -80,7 +81,7 @@ async function simulateFullBridgeDeployment() {
       contract_id: BRIDGE_CONTRACT,
       function_name: "signal-allowlist-approval",
       function_args: [uintCV(1)], // proposal ID
-      sender: "ST1G655MB1JVQ5FBE2JJ3E01HEA6KBM4H394VWAD6", // Second approver
+      sender: "SP2BK886SQQPSQHJGJ8T1B3NQXG9V9F5EDTR7F7X4", // Second approver
     })
 
     // 4. TEST: Small pool buy (should fallback to bridge - 4 events)
@@ -99,6 +100,8 @@ async function simulateFullBridgeDeployment() {
       ],
       sender: POOL_BUYER,
     })
+
+    // we need to complete the prelaunch contract first with 10 owners who have 10 registered agents
 
     // 5. TEST: Large DEX buy (should route through DEX - 12 events)
     .addContractCall({
