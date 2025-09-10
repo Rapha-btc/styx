@@ -9,26 +9,19 @@ import {
 } from "@stacks/transactions";
 import * as fs from "fs";
 
-async function simulateFullBridgeDeployment() {
-  // Use existing deployed contracts
+async function simulatePrelaunchCompletionAndDexTesting() {
+  // Existing deployed contracts on mainnet
   const BRIDGE_CONTRACT =
-    "SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.btc2sbtc-simul"; // "SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988.btc2aibtc";
+    "SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.btc2sbtc-simul";
   const AGENT_REGISTRY =
     "SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.agent-account-registry";
 
-  // Agent deployer (needs to deploy new agent contracts)
-  const AGENT_DEPLOYER = "SP2Z94F6QX847PMXTPJJ2ZCCN79JZDW3PJ4E6ZABY";
+  // Key addresses
+  const OPERATOR = "SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988"; // Bridge operator
+  const APPROVER1 = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22"; // Bridge approver 1
+  const APPROVER2 = "SP2BK886SQQPSQHJGJ8T1B3NQXG9V9F5EDTR7F7X4"; // Bridge approver 2
 
-  // Other addresses
-  const OPERATOR = "SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988"; // OPERATOR STYX of the bridge
-
-  const APPROVER1 = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22"; // APPROVER 1 of the bridge for indexing
-
-  // Test addresses
-  const POOL_BUYER = "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J";
-  const DEX_BUYER = "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB";
-
-  // Contract references (already deployed on mainnet)
+  // Test contracts (already deployed on mainnet)
   const SBTC_TOKEN = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token";
   const TEST_TOKEN = "SP2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5E4R0JRM.fake2-faktory";
   const TEST_DEX =
@@ -38,49 +31,57 @@ async function simulateFullBridgeDeployment() {
   const TEST_POOL =
     "SP2HH7PR5SENEXCGDHSHGS5RFPMACEDRN5E4R0JRM.xyk-pool-sbtc-fake2-v-1-1";
 
-  const agent1 =
-    "SP2Z94F6QX847PMXTPJJ2ZCCN79JZDW3PJ4E6ZABY.aibtc-acct-SP213-XZVBZ-SP12B-5V9W0";
-  const owner1 = "SP213FCK4QPHW1PMRXCVWYJX2KXW79WF6847XZVBZ";
-  const agent2 =
-    "SP2Z94F6QX847PMXTPJJ2ZCCN79JZDW3PJ4E6ZABY.aibtc-acct-SPV9K-JDC22-SP20Z-SEJ7D";
-  const owner2 = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22";
-  const user3 = "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR";
-  const user4 = "SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ";
-  const user5 = "SP2QGMXH21KFDX99PWNB7Z7WNQ92TWFAECEEK10GE";
-  const user6 = "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB";
-  const user7 = "SP3RKM375AZAJR4WYCCEVMDB4DZEZMFF06C0XHB5P";
-  const user8 = "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J";
-  const user9 = "SP4Q7BMWF4B5M3C43QCXH4HWPS1550TD63FJ2QSF";
-  const user10 = "SPQRZQWAZ78SE0Y9R571AGTK9V4GT9CWAFAQRNDK";
+  // 2 Registered agent owners (can use bridge)
+  const AGENT_OWNER_1 = "SP213FCK4QPHW1PMRXCVWYJX2KXW79WF6847XZVBZ";
+  const AGENT_OWNER_2 = "SPV9K21TBFAK4KNRJXF5DFP8N7W46G4V9RCJDC22";
 
-  // registestered: SP29D6YMDNAKN1P045T6Z817RTE1AC0JAA99WAX2B.agent-account-registry
+  // 8 Individual addresses (will buy directly from pre-launch)
+  const INDIVIDUAL_BUYERS = [
+    "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR",
+    "SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ",
+    "SP2QGMXH21KFDX99PWNB7Z7WNQ92TWFAECEEK10GE",
+    "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB",
+    "SP3RKM375AZAJR4WYCCEVMDB4DZEZMFF06C0XHB5P",
+    "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J",
+    "SP4Q7BMWF4B5M3C43QCXH4HWPS1550TD63FJ2QSF",
+    "SPQRZQWAZ78SE0Y9R571AGTK9V4GT9CWAFAQRNDK",
+  ];
+
+  // Well-funded user for initial sBTC distribution
+  const FUNDED_USER = "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR"; // user3 with 302.49 BTC
 
   const simulation = SimulationBuilder.new()
-    .withSender(AGENT_DEPLOYER)
+    .withSender(OPERATOR)
 
-    // 1. Deploy new agent contracts from the correct deployer
-    .addContractDeploy({
-      contract_name: "an-agent-11",
-      source_code: fs.readFileSync("contracts/an-agent-11.clar", "utf8"), // Reuse existing agent code
-      sender: AGENT_DEPLOYER,
-      clarity_version: ClarityVersion.Clarity3,
+    // ===== INITIAL FUNDING - Transfer sBTC to registered owners =====
+
+    // 1. Fund Agent Owner 1 with sBTC for large purchases (6M sats)
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "transfer",
+      function_args: [
+        uintCV(6000000), // 6M sats
+        principalCV(FUNDED_USER),
+        principalCV(AGENT_OWNER_1),
+        noneCV(),
+      ],
+      sender: FUNDED_USER,
     })
 
-    .addContractDeploy({
-      contract_name: "an-agent-12",
-      source_code: fs.readFileSync("contracts/an-agent-12.clar", "utf8"),
-      sender: AGENT_DEPLOYER,
-      clarity_version: ClarityVersion.Clarity3,
+    // 2. Fund Agent Owner 2 with sBTC for purchases (1M sats)
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "transfer",
+      function_args: [
+        uintCV(1000000), // 1M sats
+        principalCV(FUNDED_USER),
+        principalCV(AGENT_OWNER_2),
+        noneCV(),
+      ],
+      sender: FUNDED_USER,
     })
 
-    .addContractDeploy({
-      contract_name: "an-agent-13",
-      source_code: fs.readFileSync("contracts/an-agent-13.clar", "utf8"),
-      sender: AGENT_DEPLOYER,
-      clarity_version: ClarityVersion.Clarity3,
-    })
-
-    // 2. Setup allowed DEX (using existing bridge contract)
+    // 3. Setup allowed DEX
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "propose-allowlist-dexes",
@@ -93,20 +94,22 @@ async function simulateFullBridgeDeployment() {
       sender: APPROVER1,
     })
 
-    // 3. Signal approval for DEX (need second approver)
+    // 4. Signal approval for DEX allowlisting
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "signal-allowlist-approval",
       function_args: [uintCV(1)], // proposal ID
-      sender: "SP2BK886SQQPSQHJGJ8T1B3NQXG9V9F5EDTR7F7X4", // Second approver
+      sender: APPROVER2,
     })
 
-    // 4. TEST: Small pool buy (should fallback to bridge - 4 events)
+    // ===== PHASE 1: PRELAUNCH COMPLETION (20 seats total) =====
+
+    // 5. Agent Owner 1 buys 2 seats via bridge (50k sats)
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "swap-btc-to-aibtc",
       function_args: [
-        uintCV(200000), // 200k sats
+        uintCV(50000), // 50k sats for 2 seats
         uintCV(0), // min-amount-out
         uintCV(1), // dex-id
         principalCV(TEST_TOKEN),
@@ -115,57 +118,184 @@ async function simulateFullBridgeDeployment() {
         principalCV(TEST_POOL),
         principalCV(SBTC_TOKEN),
       ],
-      sender: POOL_BUYER,
+      sender: AGENT_OWNER_1,
     })
 
-    // we need to complete the prelaunch contract first with 10 owners who have 10 registered agents
-
-    // 5. TEST: Large DEX buy (should route through DEX - 12 events)
+    // 6. Agent Owner 2 buys 2 seats via bridge (50k sats)
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "swap-btc-to-aibtc",
       function_args: [
-        uintCV(4796000), // 4.796M sats (just under graduation threshold)
-        uintCV(0),
-        uintCV(1),
+        uintCV(50000), // 50k sats for 2 seats
+        uintCV(0), // min-amount-out
+        uintCV(1), // dex-id
         principalCV(TEST_TOKEN),
         principalCV(TEST_DEX),
         principalCV(TEST_PRE),
         principalCV(TEST_POOL),
         principalCV(SBTC_TOKEN),
       ],
-      sender: DEX_BUYER,
+      sender: AGENT_OWNER_2,
     })
 
-    // 6. Check bridge balance after transactions
+    // 7-14. Individual buyers purchase 2 seats each directly from prelaunch
     .addContractCall({
-      contract_id: SBTC_TOKEN,
-      function_name: "get-balance",
-      function_args: [principalCV(BRIDGE_CONTRACT)],
-      sender: POOL_BUYER,
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[0],
     })
-
-    // 7. Check DEX contract balance
     .addContractCall({
-      contract_id: SBTC_TOKEN,
-      function_name: "get-balance",
-      function_args: [principalCV(TEST_DEX)],
-      sender: POOL_BUYER,
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[1],
+    })
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[2],
+    })
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[3],
+    })
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[4],
+    })
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[5],
+    })
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[6],
+    })
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "buy-up-to",
+      function_args: [uintCV(2)], // 2 seats
+      sender: INDIVIDUAL_BUYERS[7],
     })
 
-    // 8. Check market status
+    // 15. Check if market is now open (should be true after 20 seats)
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "is-market-open",
       function_args: [],
-      sender: POOL_BUYER,
+      sender: AGENT_OWNER_1,
+    })
+
+    // ===== PHASE 2: DEX COMPLETION (5M sats target + fees) =====
+
+    // 16. Large DEX buy to reach 5M target (5.1M sats + 2% fees ≈ 5.2M)
+    .addContractCall({
+      contract_id: BRIDGE_CONTRACT,
+      function_name: "swap-btc-to-aibtc",
+      function_args: [
+        uintCV(5200000), // 5.2M sats (5M + fees)
+        uintCV(0), // min-amount-out
+        uintCV(1), // dex-id
+        principalCV(TEST_TOKEN),
+        principalCV(TEST_DEX),
+        principalCV(TEST_PRE),
+        principalCV(TEST_POOL),
+        principalCV(SBTC_TOKEN),
+      ],
+      sender: AGENT_OWNER_1, // Use registered agent owner
+    })
+
+    // ===== PHASE 3: POOL BUY TEST =====
+
+    // 17. Smaller buy that should fallback to bridge pool
+    .addContractCall({
+      contract_id: BRIDGE_CONTRACT,
+      function_name: "swap-btc-to-aibtc",
+      function_args: [
+        uintCV(300000), // 300k sats - should use pool
+        uintCV(0), // min-amount-out
+        uintCV(1), // dex-id
+        principalCV(TEST_TOKEN),
+        principalCV(TEST_DEX),
+        principalCV(TEST_PRE),
+        principalCV(TEST_POOL),
+        principalCV(SBTC_TOKEN),
+      ],
+      sender: AGENT_OWNER_2, // Use other registered agent owner
+    })
+
+    // ===== VERIFICATION CALLS =====
+
+    // 18. Check final market status
+    .addContractCall({
+      contract_id: TEST_PRE,
+      function_name: "is-market-open",
+      function_args: [],
+      sender: AGENT_OWNER_1,
+    })
+
+    // 19. Check bridge pool balance after all transactions
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "get-balance",
+      function_args: [principalCV(BRIDGE_CONTRACT)],
+      sender: AGENT_OWNER_1,
+    })
+
+    // 20. Check DEX contract balance
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "get-balance",
+      function_args: [principalCV(TEST_DEX)],
+      sender: AGENT_OWNER_1,
+    })
+
+    // 21. Check XYK Pool balance
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "get-balance",
+      function_args: [principalCV(TEST_POOL)],
+      sender: AGENT_OWNER_1,
+    })
+
+    // 22. Check remaining balances of funded owners
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "get-balance",
+      function_args: [principalCV(AGENT_OWNER_1)],
+      sender: AGENT_OWNER_1,
+    })
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "get-balance",
+      function_args: [principalCV(AGENT_OWNER_2)],
+      sender: AGENT_OWNER_2,
     });
 
   try {
     const simulationId = await simulation.run();
-    console.log(
-      `Bridge Test with Deployed Contracts: https://stxer.xyz/simulations/mainnet/${simulationId}`
-    );
+    console.log(`
+===== BRIDGE PRELAUNCH COMPLETION & DEX TESTING SIMULATION =====
+Simulation URL: https://stxer.xyz/simulations/mainnet/${simulationId}
+
+Expected Results:
+- Phase 1: 20 seats purchased (2 via bridge + 8 via prelaunch)
+- Phase 2: Market opens, large DEX buy processes via DEX routing  
+- Phase 3: Small buy falls back to bridge pool
+- Verification: Final balances show proper routing
+
+This tests the complete bridge functionality with real mainnet contracts.
+    `);
     return simulationId;
   } catch (error) {
     console.error("Simulation failed:", error);
@@ -174,4 +304,4 @@ async function simulateFullBridgeDeployment() {
 }
 
 // Run the simulation
-simulateFullBridgeDeployment().catch(console.error);
+simulatePrelaunchCompletionAndDexTesting().catch(console.error);
