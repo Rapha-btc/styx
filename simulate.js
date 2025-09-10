@@ -153,49 +153,49 @@ async function simulatePrelaunchCompletionAndDexTesting() {
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[0],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[1],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[2],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[3],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[4],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[5],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[6],
     })
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
-      function_args: [uintCV(2)], // 2 seats
+      function_args: [uintCV(2), noneCV()], // 2 seats, no specific stx-owner
       sender: INDIVIDUAL_BUYERS[7],
     })
 
@@ -316,3 +316,17 @@ This tests the complete bridge functionality with real mainnet contracts.
 
 // Run the simulation
 simulatePrelaunchCompletionAndDexTesting().catch(console.error);
+
+// Using block height 3435751 hash 0xd85d6e19e015c1b19647e4d891d79550c7150287e9fad43323c52204d0983ca9 to run simulation.
+// Simulation will be available at: https://stxer.xyz/simulations/mainnet/e65cadb1cea887f19546370a58df8ca4
+
+// ===== BRIDGE PRELAUNCH COMPLETION & DEX TESTING SIMULATION =====
+// Simulation URL: https://stxer.xyz/simulations/mainnet/e65cadb1cea887f19546370a58df8ca4
+
+// Expected Results:
+// - Phase 1: 20 seats purchased (2 via bridge + 8 via prelaunch)
+// - Phase 2: Market opens, large DEX buy processes via DEX routing
+// - Phase 3: Small buy falls back to bridge pool
+// - Verification: Final balances show proper routing
+
+// This tests the complete bridge functionality with real mainnet contracts.
