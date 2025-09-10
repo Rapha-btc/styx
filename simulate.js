@@ -1,3 +1,14 @@
+// 8 Individual addresses (will buy directly from pre-launch)
+const INDIVIDUAL_BUYERS = [
+  "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR",
+  "SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ",
+  "SP2QGMXH21KFDX99PWNB7Z7WNQ92TWFAECEEK10GE",
+  "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB",
+  "SP3RKM375AZAJR4WYCCEVMDB4DZEZMFF06C0XHB5P",
+  "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J",
+  "SP4Q7BMWF4B5M3C43QCXH4HWPS1550TD63FJ2QSF",
+  "SPQRZQWAZ78SE0Y9R571AGTK9V4GT9CWAFAQRNDK",
+];
 import { SimulationBuilder } from "stxer";
 import {
   contractPrincipalCV,
@@ -37,7 +48,6 @@ async function simulatePrelaunchCompletionAndDexTesting() {
 
   // 8 Individual addresses (will buy directly from pre-launch)
   const INDIVIDUAL_BUYERS = [
-    "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR",
     "SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ",
     "SP2QGMXH21KFDX99PWNB7Z7WNQ92TWFAECEEK10GE",
     "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB",
@@ -45,10 +55,11 @@ async function simulatePrelaunchCompletionAndDexTesting() {
     "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J",
     "SP4Q7BMWF4B5M3C43QCXH4HWPS1550TD63FJ2QSF",
     "SPQRZQWAZ78SE0Y9R571AGTK9V4GT9CWAFAQRNDK",
+    "SP3EAB6NKWV1QQ449W9N2CPQEPZVPS13N6VAWKP6T",
   ];
 
   // Well-funded user for initial sBTC distribution
-  const FUNDED_USER = "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR"; // user3 with 302.49 BTC
+  const FUNDED_USER = "SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ"; // user3 with 302.49 BTC
 
   const simulation = SimulationBuilder.new()
     .withSender(OPERATOR)
@@ -94,7 +105,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: APPROVER1,
     })
 
-    // 4. Signal approval for DEX allowlisting
+    // Signal approval for DEX allowlisting
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "signal-allowlist-approval",
@@ -104,7 +115,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
 
     // ===== PHASE 1: PRELAUNCH COMPLETION (20 seats total) =====
 
-    // 5. Agent Owner 1 buys 2 seats via bridge (50k sats)
+    // Agent Owner 1 buys 2 seats via bridge (50k sats)
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "swap-btc-to-aibtc",
@@ -121,7 +132,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: AGENT_OWNER_1,
     })
 
-    // 6. Agent Owner 2 buys 2 seats via bridge (50k sats)
+    // Agent Owner 2 buys 2 seats via bridge (50k sats)
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "swap-btc-to-aibtc",
@@ -138,7 +149,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: AGENT_OWNER_2,
     })
 
-    // 7-14. Individual buyers purchase 2 seats each directly from prelaunch
+    // Individual buyers purchase 2 seats each directly from prelaunch
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "buy-up-to",
@@ -188,7 +199,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: INDIVIDUAL_BUYERS[7],
     })
 
-    // 15. Check if market is now open (should be true after 20 seats)
+    // Check if market is now open (should be true after 20 seats)
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "is-market-open",
@@ -198,7 +209,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
 
     // ===== PHASE 2: DEX COMPLETION (5M sats target + fees) =====
 
-    // 16. Large DEX buy to reach 5M target (5.1M sats + 2% fees ≈ 5.2M)
+    // Large DEX buy to reach 5M target (5.1M sats + 2% fees ≈ 5.2M)
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "swap-btc-to-aibtc",
@@ -217,7 +228,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
 
     // ===== PHASE 3: POOL BUY TEST =====
 
-    // 17. Smaller buy that should fallback to bridge pool
+    // Smaller buy that should fallback to bridge pool
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
       function_name: "swap-btc-to-aibtc",
@@ -236,7 +247,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
 
     // ===== VERIFICATION CALLS =====
 
-    // 18. Check final market status
+    // Check final market status
     .addContractCall({
       contract_id: TEST_PRE,
       function_name: "is-market-open",
@@ -244,7 +255,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: AGENT_OWNER_1,
     })
 
-    // 19. Check bridge pool balance after all transactions
+    // Check bridge pool balance after all transactions
     .addContractCall({
       contract_id: SBTC_TOKEN,
       function_name: "get-balance",
@@ -252,7 +263,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: AGENT_OWNER_1,
     })
 
-    // 20. Check DEX contract balance
+    // Check DEX contract balance
     .addContractCall({
       contract_id: SBTC_TOKEN,
       function_name: "get-balance",
@@ -260,7 +271,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: AGENT_OWNER_1,
     })
 
-    // 21. Check XYK Pool balance
+    // Check XYK Pool balance
     .addContractCall({
       contract_id: SBTC_TOKEN,
       function_name: "get-balance",
@@ -268,7 +279,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: AGENT_OWNER_1,
     })
 
-    // 22. Check remaining balances of funded owners
+    // Check remaining balances of funded owners
     .addContractCall({
       contract_id: SBTC_TOKEN,
       function_name: "get-balance",
