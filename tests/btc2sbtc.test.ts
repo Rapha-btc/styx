@@ -310,7 +310,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         "swap-btc-to-aibtc",
         [
           uintCV(btcAmount),
-          uintCV(0),
+          uintCV(1),
           uintCV(1),
           ftContract,
           dexContract,
@@ -380,7 +380,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         "swap-btc-to-aibtc",
         [
           uintCV(btcAmount),
-          uintCV(0),
+          uintCV(1),
           uintCV(invalidDexId),
           ftContract,
           dexContract,
@@ -436,7 +436,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         "swap-btc-to-aibtc",
         [
           uintCV(btcAmount),
-          uintCV(0),
+          uintCV(1),
           uintCV(1),
           ftContract,
           dexContract,
@@ -566,7 +566,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
           "swap-btc-to-aibtc",
           [
             uintCV(50000),
-            uintCV(0),
+            uintCV(1),
             uintCV(1),
             principalCV(TEST_TOKEN_CONTRACT),
             principalCV(TEST_DEX_CONTRACT),
@@ -712,10 +712,14 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
         [],
         deployer
       );
-      console.log(
-        `Initial market open: ${cvToValue(initialMarketOpen.result).value}`
-      );
-      expect(cvToValue(initialMarketOpen.result).value).toBe(false);
+
+      const marketOpenValue =
+        initialMarketOpen.result.type === ClarityType.ResponseOk
+          ? cvToValue(initialMarketOpen.result).value
+          : false;
+
+      console.log(`Initial market open: ${marketOpenValue}`);
+      expect(marketOpenValue).toBe(false);
 
       let totalSwaps = 0;
       let totalSeatsVerified = 0;
@@ -731,7 +735,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
           "swap-btc-to-aibtc",
           [
             uintCV(btcAmount),
-            uintCV(0), // min-amount-out
+            uintCV(1), // min-amount-out
             uintCV(1), // dex-id
             principalCV(TEST_TOKEN_CONTRACT),
             principalCV(TEST_DEX_CONTRACT),
@@ -861,7 +865,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
           "swap-btc-to-aibtc",
           [
             uintCV(dexAmount),
-            uintCV(0),
+            uintCV(1),
             uintCV(1),
             principalCV(TEST_TOKEN_CONTRACT),
             principalCV(TEST_DEX_CONTRACT),
@@ -907,7 +911,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
           "swap-btc-to-aibtc",
           [
             uintCV(secondDexAmount),
-            uintCV(0),
+            uintCV(1),
             uintCV(1),
             principalCV(TEST_TOKEN_CONTRACT),
             principalCV(TEST_DEX_CONTRACT),
@@ -964,7 +968,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
           "swap-btc-to-aibtc",
           [
             uintCV(poolAmount),
-            uintCV(0), // min-amount-out
+            uintCV(1), // min-amount-out
             uintCV(1), // dex-id
             principalCV(TEST_TOKEN_CONTRACT),
             principalCV(TEST_DEX_CONTRACT),
@@ -1027,7 +1031,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
           "swap-btc-to-aibtc",
           [
             uintCV(poolAmount),
-            uintCV(0), // min-amount-out
+            uintCV(1), // min-amount-out
             uintCV(1), // dex-id
             principalCV(TEST_TOKEN_CONTRACT),
             principalCV(TEST_DEX_CONTRACT),
@@ -1257,7 +1261,7 @@ describe("BTC to AI BTC Bridge - Debug Session", () => {
     //         "swap-btc-to-aibtc",
     //         [
     //           uintCV(dexAmount),
-    //           uintCV(0),
+    //           uintCV(1),
     //           uintCV(1),
     //           principalCV(TEST_TOKEN_CONTRACT),
     //           principalCV(TEST_DEX_CONTRACT),

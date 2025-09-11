@@ -1,14 +1,3 @@
-// 8 Individual addresses (will buy directly from pre-launch)
-const INDIVIDUAL_BUYERS = [
-  "SM2SE3ZT7D2T1B9VVMRBA7RBRJYPB1ZP6DEW3YHVR",
-  "SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ",
-  "SP2QGMXH21KFDX99PWNB7Z7WNQ92TWFAECEEK10GE",
-  "SPE2NS75PVGFTZXA76ZBHGVGPADW4PK2NYHVRZVB",
-  "SP3RKM375AZAJR4WYCCEVMDB4DZEZMFF06C0XHB5P",
-  "SP2P5A2F3VN7G7CSF3W68AHYZ6ZM6BJSZV69MG03J",
-  "SP4Q7BMWF4B5M3C43QCXH4HWPS1550TD63FJ2QSF",
-  "SPQRZQWAZ78SE0Y9R571AGTK9V4GT9CWAFAQRNDK",
-];
 import { SimulationBuilder } from "stxer";
 import {
   contractPrincipalCV,
@@ -92,6 +81,27 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       sender: FUNDED_USER,
     })
 
+    // Fund the operator with sBTC so they can add liquidity to bridge
+    .addContractCall({
+      contract_id: SBTC_TOKEN,
+      function_name: "transfer",
+      function_args: [
+        uintCV(10000000), // 10M sats for bridge liquidity
+        principalCV(FUNDED_USER), // SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ
+        principalCV(OPERATOR), // SP12HZDARME0G89TYPA6Q5KPP5N7W04F65VPXS988
+        noneCV(),
+      ],
+      sender: FUNDED_USER,
+    })
+
+    // Add liquidity to bridge pool (after sBTC transfers, before DEX setup)
+    .addContractCall({
+      contract_id: BRIDGE_CONTRACT,
+      function_name: "add-only-liquidity",
+      function_args: [uintCV(10000000)], // 10M sats to cover all swaps
+      sender: OPERATOR, // SP24MM95FEZJY3XWSBGZ5CT8DV04J6NVM5QA4WDXZ
+    })
+
     // 3. Setup allowed DEX
     .addContractCall({
       contract_id: BRIDGE_CONTRACT,
@@ -121,7 +131,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       function_name: "swap-btc-to-aibtc",
       function_args: [
         uintCV(50000), // 50k sats for 2 seats
-        uintCV(0), // min-amount-out
+        uintCV(1), // min-amount-out - Bitflow requires > 0
         uintCV(1), // dex-id
         principalCV(TEST_TOKEN),
         principalCV(TEST_DEX),
@@ -138,7 +148,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       function_name: "swap-btc-to-aibtc",
       function_args: [
         uintCV(50000), // 50k sats for 2 seats
-        uintCV(0), // min-amount-out
+        uintCV(1), // min-amount-out - Bitflow requires > 0
         uintCV(1), // dex-id
         principalCV(TEST_TOKEN),
         principalCV(TEST_DEX),
@@ -215,7 +225,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       function_name: "swap-btc-to-aibtc",
       function_args: [
         uintCV(5200000), // 5.2M sats (5M + fees)
-        uintCV(0), // min-amount-out
+        uintCV(1), // min-amount-out - Bitflow requires > 0
         uintCV(1), // dex-id
         principalCV(TEST_TOKEN),
         principalCV(TEST_DEX),
@@ -234,7 +244,7 @@ async function simulatePrelaunchCompletionAndDexTesting() {
       function_name: "swap-btc-to-aibtc",
       function_args: [
         uintCV(300000), // 300k sats - should use pool
-        uintCV(0), // min-amount-out
+        uintCV(1), // min-amount-out - Bitflow requires > 0
         uintCV(1), // dex-id
         principalCV(TEST_TOKEN),
         principalCV(TEST_DEX),
@@ -317,11 +327,11 @@ This tests the complete bridge functionality with real mainnet contracts.
 // Run the simulation
 simulatePrelaunchCompletionAndDexTesting().catch(console.error);
 
-// Using block height 3435751 hash 0xd85d6e19e015c1b19647e4d891d79550c7150287e9fad43323c52204d0983ca9 to run simulation.
-// Simulation will be available at: https://stxer.xyz/simulations/mainnet/e65cadb1cea887f19546370a58df8ca4
+// Using block height 3436671 hash 0x3996804ae6af8408d331d3f0d6edb402bc178534fe35f59fa2a8c2ca2dc50792 to run simulation.
+// Simulation will be available at: https://stxer.xyz/simulations/mainnet/9f75109bc8e24872d921a0f44e69e5aa
 
 // ===== BRIDGE PRELAUNCH COMPLETION & DEX TESTING SIMULATION =====
-// Simulation URL: https://stxer.xyz/simulations/mainnet/e65cadb1cea887f19546370a58df8ca4
+// Simulation URL: https://stxer.xyz/simulations/mainnet/9f75109bc8e24872d921a0f44e69e5aa
 
 // Expected Results:
 // - Phase 1: 20 seats purchased (2 via bridge + 8 via prelaunch)
